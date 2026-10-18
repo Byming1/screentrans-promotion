@@ -7,11 +7,21 @@ const app = express();
 
 app.disable("x-powered-by");
 
-const allowedOrigins = [process.env.FRONTEND_URL].filter(Boolean);
+const allowedOrigins = [
+  process.env.FRONTEND_URL?.replace(/\/$/, ""),
+  ...(process.env.NODE_ENV !== "production" ? ["http://localhost:5173"] : []),
+].filter(Boolean);
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn("CORS blocked origin:", origin);
+      return callback(new Error("CORS origin denied"));
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
