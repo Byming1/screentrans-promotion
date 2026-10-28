@@ -15,9 +15,14 @@ export function errorMessage(error) {
   if (!error.response)
     return "Không kết nối được máy chủ. Hãy kiểm tra Backend và CORS.";
   const message = error.response.data?.message;
+  // Ưu tiên thông báo từ máy chủ: nó phân biệt được các trường hợp như email
+  // chưa xác thực với sai mật khẩu.
+  if (typeof message === "string" && message) return message;
   if (error.response.status === 401)
     return "Phiên đăng nhập hết hạn hoặc thông tin không chính xác.";
-  return typeof message === "string"
-    ? message
-    : "Đã xảy ra lỗi, vui lòng thử lại.";
+  return "Đã xảy ra lỗi, vui lòng thử lại.";
+}
+
+export function errorCode(error) {
+  return error.response?.data?.code ?? null;
 }

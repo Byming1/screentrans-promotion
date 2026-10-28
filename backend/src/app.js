@@ -1,11 +1,21 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import subscriptionRoutes from "./routes/subscription.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 
 app.disable("x-powered-by");
+
+// API thuần JSON nên không cần CSP; giữ các header bảo mật còn lại.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Chạy sau reverse proxy (Render/Railway...) nên cần tin X-Forwarded-For để
+// rate limit tính đúng IP người dùng thay vì IP của proxy.
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 const allowedOrigins = [
   process.env.FRONTEND_URL?.replace(/\/$/, ""),

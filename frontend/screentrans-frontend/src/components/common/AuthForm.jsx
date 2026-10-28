@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Mail, LockKeyhole, UserRound } from 'lucide-react';
 import { logo } from '../../constants/brand';
 import { authApi } from '../../services/auth';
-import { errorMessage } from '../../services/api';
+import { errorMessage, errorCode } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function AuthForm({ mode }) {
@@ -15,11 +15,22 @@ export default function AuthForm({ mode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const update = (key) => (event) => setValues((prev) => ({ ...prev, [key]: event.target.value }));
+
+  const handleResend = async () => {
+    setError(''); setSuccess(''); setBusy(true);
+    try {
+      const { data } = await authApi.resendConfirmation({ email: values.email.trim() });
+      setSuccess(data.message);
+      setNeedsConfirmation(false);
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setBusy(false); }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError(''); setSuccess('');
+    setError(''); setSuccess(''); setNeedsConfirmation(false);
     if (register && values.fullName.trim().length < 2) { setError('Vui lòng nhập họ tên hợp lệ.'); return; }
     if (register && values.password !== values.confirmPassword) { setError('Mật khẩu xác nhận không khớp.'); return; }
     if (register && values.password.length < 8) { setError('Mật khẩu phải có ít nhất 8 ký tự.'); return; }
@@ -36,7 +47,10 @@ export default function AuthForm({ mode }) {
         await login(credentials);
         navigate(location.state?.from || '/profile', { replace: true });
       }
-    } catch (err) { setError(errorMessage(err)); }
+    } catch (err) {
+      setError(errorMessage(err));
+      if (errorCode(err) === 'email_not_confirmed') setNeedsConfirmation(true);
+    }
     finally { setBusy(false); }
   };
 
@@ -50,6 +64,7 @@ export default function AuthForm({ mode }) {
       <label>Mật khẩu<div className="input-wrap"><LockKeyhole size={18}/><input type="password" value={values.password} onChange={update('password')} placeholder="Tối thiểu 8 ký tự" autoComplete={register ? 'new-password' : 'current-password'} required minLength={register ? 8 : undefined}/></div></label>
       {register && <label>Xác nhận mật khẩu<div className="input-wrap"><LockKeyhole size={18}/><input type="password" value={values.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" required minLength={8}/></div></label>}
       {error && <p className="form-message error" role="alert">{error}</p>}
+      {needsConfirmation && <button className="btn btn-outline full" disabled={busy} type="button" onClick={handleResend}>Gửi lại email xác thực</button>}
       {success && <p className="form-message success" role="status">{success}</p>}
       <button className="btn btn-primary full" disabled={busy} type="submit">{busy ? 'Đang xử lý...' : register ? 'Đăng ký' : 'Đăng nhập'}</button>
     </form>
