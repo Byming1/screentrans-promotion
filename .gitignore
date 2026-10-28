@@ -21,5 +21,15 @@ build/
 *.log
 npm-debug.log*
 
+# Seed data: chứa mật khẩu và email sinh viên thật
+scripts/seeded-users.csv
+
+# Danh sách lớp: dữ liệu cá nhân của sinh viên
+*.xlsx
+
 # Misc
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
