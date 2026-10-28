@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabase.js";
+import { getEmailDomain, hasMailExchanger } from "../utils/emailDomain.js";
 
 // Link trong email xác thực phải trỏ về frontend, nếu không Supabase sẽ dùng
 // Site URL mặc định trong Dashboard. URL này cũng phải nằm trong danh sách
@@ -23,6 +24,16 @@ export const register = async (req, res) => {
     ) {
       return res.status(400).json({
         message: "Invalid registration information",
+      });
+    }
+
+    // Supabase vẫn tạo user cho domain không tồn tại, nên phải tự chặn trước:
+    // tránh tài khoản rác không bao giờ nhận được email xác thực.
+    if (!(await hasMailExchanger(getEmailDomain(email)))) {
+      return res.status(400).json({
+        code: "email_domain_unreachable",
+        message:
+          "Tên miền email không nhận được thư. Vui lòng kiểm tra lại địa chỉ email.",
       });
     }
 
@@ -129,6 +140,14 @@ export const resendConfirmation = async (req, res) => {
     if (typeof email !== "string" || !email.trim() || !isEmail(email)) {
       return res.status(400).json({
         message: "Email không hợp lệ",
+      });
+    }
+
+    if (!(await hasMailExchanger(getEmailDomain(email)))) {
+      return res.status(400).json({
+        code: "email_domain_unreachable",
+        message:
+          "Tên miền email không nhận được thư. Vui lòng kiểm tra lại địa chỉ email.",
       });
     }
 
