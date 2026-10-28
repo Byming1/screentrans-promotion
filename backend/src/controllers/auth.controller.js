@@ -3,7 +3,7 @@ import { supabase } from "../config/supabase.js";
 // Link trong email xác thực phải trỏ về frontend, nếu không Supabase sẽ dùng
 // Site URL mặc định trong Dashboard. URL này cũng phải nằm trong danh sách
 // Redirect URLs của project.
-const emailRedirectTo = `${(process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "")}/login`;
+const emailRedirectTo = `${(process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "")}/auth/confirm`;
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -158,6 +158,52 @@ export const resendConfirmation = async (req, res) => {
     });
   } catch (error) {
     console.error("Resend confirmation error:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+// Các loại OTP được phép xác thực qua endpoint này.
+const CONFIRM_TYPES = new Set(["signup", "email", "email_change", "invite"]);
+
+// POST /api/auth/confirm
+export const confirmEmail = async (req, res) => {
+  try {
+    const { token_hash: tokenHash, type } = req.body ?? {};
+
+    if (typeof tokenHash !== "string" || !tokenHash.trim()) {
+      return res.status(400).json({
+        message: "Liên kết xác thực không hợp lệ.",
+      });
+    }
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      type: CONFIRM_TYPES.has(type) ? type : "signup",
+      token_hash: tokenHash.trim(),
+    });
+
+    if (error || !data.session) {
+      return res.status(400).json({
+        code: "invalid_or_expired_token",
+        message:
+          "Liên kết xác thực đã hết hạn hoặc không hợp lệ. Vui lòng gửi lại email xác thực.",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Xác thực email thành công",
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+      },
+      session: {
+        access_token: data.session.access_token,
+        expires_in: data.session.expires_in,
+      },
+    });
+  } catch (error) {
+    console.error("Confirm email error:", error);
     return res.status(500).json({
       message: "Internal server error",
     });

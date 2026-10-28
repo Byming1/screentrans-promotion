@@ -8,6 +8,7 @@ import Pricing from './pages/Pricing';
 import Download from './pages/Download';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import AuthConfirm from './pages/AuthConfirm';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 
@@ -16,6 +17,7 @@ export default function App() {
     <Route path="/" element={<Home/>}/><Route path="/features" element={<Features/>}/>
     <Route path="/pricing" element={<Pricing/>}/><Route path="/download" element={<Download/>}/>
     <Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/>
+    <Route path="/auth/confirm" element={<AuthConfirm/>}/>
     <Route path="/profile" element={<ProtectedRoute><Profile/></ProtectedRoute>}/>
     <Route path="*" element={<NotFound/>}/>
   </Routes></main><Footer/></>;

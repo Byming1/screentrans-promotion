@@ -32,3 +32,11 @@ export const resendLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 3,
 });
+
+// Xác thực token từ email: chặn dò token nhưng vẫn đủ rộng để người dùng bấm
+// lại liên kết vài lần (ví dụ refresh trang) mà không bị khoá.
+export const confirmLimiter = rateLimit({
+  ...base,
+  limit: 20,
+  skipSuccessfulRequests: true,
+});

@@ -45,7 +45,16 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  return <AuthContext.Provider value={{ user, profile, loading, login, logout, loadMe }}>
+  // Dùng cho luồng xác thực email: backend đã đổi token_hash thành session,
+  // ở đây chỉ cần nhận access token như sau khi đăng nhập.
+  const adoptSession = useCallback(async ({ accessToken, user: confirmedUser }) => {
+    sessionStorage.setItem(TOKEN_KEY, accessToken);
+    setUser(confirmedUser);
+    setProfile(null);
+    try { await loadMe(); } catch (error) { console.warn('Profile chưa sẵn sàng:', error); }
+  }, [loadMe]);
+
+  return <AuthContext.Provider value={{ user, profile, loading, login, logout, loadMe, adoptSession }}>
     {children}
   </AuthContext.Provider>;
 }
