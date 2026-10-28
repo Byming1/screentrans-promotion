@@ -15,4 +15,8 @@
 .profile-card p { margin: 14px 0; }
 .break-word { overflow-wrap: anywhere; }
 .nav-signout { background: transparent; border: 0; font: inherit; cursor: pointer; }
+/* Nút đăng ký cạnh link đăng nhập; thu gọn padding để không chiếm chỗ của nav. */
+.nav-register { padding: 9px 16px; margin-left: 10px; }
 @media (max-width: 700px) { .profile-grid { grid-template-columns: 1fr; } }
+/* Trong menu mobile các mục xếp dọc nên nút cần trải hết chiều ngang. */
+@media (max-width: 760px) { .nav-register { margin-left: 0; justify-content: center; } }
