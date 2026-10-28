@@ -1,4 +1,4 @@
-import { supabase } from "../config/supabase.js";
+import { supabase, createUserClient } from "../config/supabase.js";
 import { getEmailDomain, hasMailExchanger } from "../utils/emailDomain.js";
 
 // Link trong email xác thực phải trỏ về frontend, nếu không Supabase sẽ dùng
@@ -7,6 +7,38 @@ import { getEmailDomain, hasMailExchanger } from "../utils/emailDomain.js";
 const emailRedirectTo = `${(process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "")}/auth/confirm`;
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+// Email được Supabase quản lý trong auth.users; bảng profiles giữ một bản sao
+// để truy vấn cùng dữ liệu nghiệp vụ. Ghi lại mỗi lần đăng nhập để bản sao
+// không lệch khi người dùng đổi email.
+//
+// Dùng upsert thay vì update: hiện chưa có trigger tạo profile khi đăng ký,
+// nên row có thể chưa tồn tại. Không chặn đăng nhập nếu ghi thất bại.
+const syncProfileEmail = async (accessToken, user) => {
+  if (!user?.id || !user?.email) return;
+
+  const profile = {
+    id: user.id,
+    email: user.email,
+  };
+
+  const fullName = user.user_metadata?.full_name;
+  if (typeof fullName === "string" && fullName.trim()) {
+    profile.full_name = fullName.trim();
+  }
+
+  try {
+    const { error } = await createUserClient(accessToken)
+      .from("profiles")
+      .upsert(profile, { onConflict: "id" });
+
+    if (error) {
+      console.warn("Could not sync profile email:", error.message);
+    }
+  } catch (error) {
+    console.warn("Could not sync profile email:", error.message);
+  }
+};
 
 // POST /api/auth/register
 export const register = async (req, res) => {
@@ -112,6 +144,8 @@ export const login = async (req, res) => {
       });
     }
 
+    await syncProfileEmail(data.session.access_token, data.user);
+
     return res.status(200).json({
       message: "Login successful",
       user: {
@@ -210,6 +244,8 @@ export const confirmEmail = async (req, res) => {
       });
     }
 
+    await syncProfileEmail(data.session.access_token, data.user);
+
     return res.status(200).json({
       message: "Xác thực email thành công",
       user: {
@@ -234,9 +270,9 @@ export const getMe = async (req, res) => {
   try {
     const { data, error } = await req.supabase
       .from("profiles")
-      .select("id, full_name, created_at")
+      .select("id, full_name, email, created_at")
       .eq("id", req.user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       return res.status(500).json({
@@ -249,6 +285,7 @@ export const getMe = async (req, res) => {
         id: req.user.id,
         email: req.user.email,
       },
+      // Có thể null nếu profile chưa được tạo; frontend đã xử lý trường hợp này.
       profile: data,
     });
   } catch (error) {

@@ -69,7 +69,7 @@ export default function Profile() {
               {profile?.full_name || "Chưa có thông tin"}
             </p>
             <p>
-              <strong>Email:</strong> {user?.email}
+              <strong>Email:</strong> {profile?.email || user?.email}
             </p>
             <p>
               <strong>ID:</strong>{" "}

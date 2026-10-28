@@ -1,5 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-import { supabase } from "../config/supabase.js";
+import { supabase, createUserClient } from "../config/supabase.js";
 
 export const requireAuth = async (req, res, next) => {
   try {
@@ -30,22 +29,7 @@ export const requireAuth = async (req, res, next) => {
     req.user = data.user;
 
     // Tạo client riêng cho request của người dùng
-    req.supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_PUBLISHABLE_KEY,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          detectSessionInUrl: false,
-        },
-      },
-    );
+    req.supabase = createUserClient(token);
 
     next();
   } catch (error) {

@@ -14,3 +14,18 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: false,
   },
 });
+
+// Client chạy dưới danh nghĩa người dùng để RLS được áp dụng đúng.
+export const createUserClient = (accessToken) =>
+  createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
