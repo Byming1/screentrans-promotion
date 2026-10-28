@@ -8,6 +8,30 @@ const emailRedirectTo = `${(process.env.FRONTEND_URL || "http://localhost:5173")
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
+// Supabase cố tình trả 200 khi đăng ký trùng email để không tiết lộ email nào
+// đã có trên hệ thống, nên phải tự nhận ra:
+//   - user đã xác thực  -> identities rỗng
+//   - user chưa xác thực -> created_at là của lần đăng ký trước, lệch hẳn so
+//     với confirmation_sent_at của lần này
+const EXISTING_USER_SKEW_MS = 5000;
+
+const isExistingUser = (user) => {
+  if (!user) return false;
+
+  if (Array.isArray(user.identities) && user.identities.length === 0) {
+    return true;
+  }
+
+  const createdAt = Date.parse(user.created_at ?? "");
+  const sentAt = Date.parse(
+    user.confirmation_sent_at ?? user.updated_at ?? "",
+  );
+
+  if (Number.isNaN(createdAt) || Number.isNaN(sentAt)) return false;
+
+  return sentAt - createdAt > EXISTING_USER_SKEW_MS;
+};
+
 // Email được Supabase quản lý trong auth.users; bảng profiles giữ một bản sao
 // để truy vấn cùng dữ liệu nghiệp vụ. Ghi lại mỗi lần đăng nhập để bản sao
 // không lệch khi người dùng đổi email.
@@ -86,6 +110,13 @@ export const register = async (req, res) => {
         .json({
           message: error.message,
         });
+    }
+
+    if (isExistingUser(data.user)) {
+      return res.status(409).json({
+        code: "email_already_registered",
+        message: "Email này đã được đăng ký. Vui lòng đăng nhập.",
+      });
     }
 
     return res.status(201).json({

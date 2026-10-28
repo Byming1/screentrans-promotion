@@ -16,6 +16,7 @@ export default function AuthForm({ mode }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const update = (key) => (event) => setValues((prev) => ({ ...prev, [key]: event.target.value }));
 
   const handleResend = async () => {
@@ -30,7 +31,7 @@ export default function AuthForm({ mode }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError(''); setSuccess(''); setNeedsConfirmation(false);
+    setError(''); setSuccess(''); setNeedsConfirmation(false); setAlreadyRegistered(false);
     if (register && values.fullName.trim().length < 2) { setError('Vui lòng nhập họ tên hợp lệ.'); return; }
     if (register && values.password !== values.confirmPassword) { setError('Mật khẩu xác nhận không khớp.'); return; }
     if (register && values.password.length < 8) { setError('Mật khẩu phải có ít nhất 8 ký tự.'); return; }
@@ -49,7 +50,9 @@ export default function AuthForm({ mode }) {
       }
     } catch (err) {
       setError(errorMessage(err));
-      if (errorCode(err) === 'email_not_confirmed') setNeedsConfirmation(true);
+      const code = errorCode(err);
+      if (code === 'email_not_confirmed') setNeedsConfirmation(true);
+      if (code === 'email_already_registered') setAlreadyRegistered(true);
     }
     finally { setBusy(false); }
   };
@@ -65,6 +68,7 @@ export default function AuthForm({ mode }) {
       {register && <label>Xác nhận mật khẩu<div className="input-wrap"><LockKeyhole size={18}/><input type="password" value={values.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" required minLength={8}/></div></label>}
       {error && <p className="form-message error" role="alert">{error}</p>}
       {needsConfirmation && <button className="btn btn-outline full" disabled={busy} type="button" onClick={handleResend}>Gửi lại email xác thực</button>}
+      {alreadyRegistered && <Link className="btn btn-outline full" to="/login">Đăng nhập ngay</Link>}
       {success && <p className="form-message success" role="status">{success}</p>}
       <button className="btn btn-primary full" disabled={busy} type="submit">{busy ? 'Đang xử lý...' : register ? 'Đăng ký' : 'Đăng nhập'}</button>
     </form>
