@@ -55,3 +55,17 @@ export const oauthCallbackLimiter = rateLimit({
   limit: 20,
   skipSuccessfulRequests: true,
 });
+
+// Tạo đơn thanh toán: mỗi lần tạo một row trong database nên cần chặn spam,
+// nhưng vẫn để người dùng đổi gói / thử lại vài lần.
+export const createOrderLimiter = rateLimit({
+  ...base,
+  limit: 20,
+});
+
+// Trang thanh toán hỏi trạng thái mỗi 5 giây, tức ~180 lần trong 15 phút.
+// Giới hạn cao hơn mức đó để người dùng ngồi chờ không bị khoá.
+export const orderStatusLimiter = rateLimit({
+  ...base,
+  limit: 400,
+});

@@ -4,6 +4,7 @@ import helmet from "helmet";
 import subscriptionRoutes from "./routes/subscription.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
 
 const app = express();
 
@@ -52,6 +53,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 
 app.use("/api/admin", adminRoutes);
+
+app.use("/api/payments", paymentRoutes);
 
 // 404
 app.use((req, res) => {

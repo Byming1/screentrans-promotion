@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { Check, Copy, Info, ArrowLeft } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Check, Copy, Info, ArrowLeft, Loader2 } from "lucide-react";
 import { subscriptionApi } from "../services/subscriptions";
+import { paymentApi } from "../services/payments";
 import { errorMessage } from "../services/api";
-import { useAuth } from "../contexts/AuthContext";
 import { paymentQr, bankAccount } from "../constants/payment";
 import { formatDuration } from "../utils/planFeatures";
 
@@ -13,25 +13,33 @@ const currency = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
+// Hỏi trạng thái đơn mỗi 5 giây. Webhook thường về trong vài giây sau khi
+// chuyển khoản, nên người dùng không phải tải lại trang.
+const POLL_MS = 5000;
+
 export default function Checkout() {
   const { planCode } = useParams();
-  const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [plan, setPlan] = useState(null);
+  const [order, setOrder] = useState(null);
+  const [paid, setPaid] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const email = profile?.email || user?.email || "";
   const qrSrc = paymentQr[planCode];
 
+  // Tải gói + tạo đơn pending để lấy mã đối soát.
   useEffect(() => {
     let active = true;
-    subscriptionApi
-      .plans()
-      .then(({ data }) => {
+    Promise.all([subscriptionApi.plans(), paymentApi.createOrder({ planCode })])
+      .then(([plansRes, orderRes]) => {
         if (!active) return;
-        const plans = Array.isArray(data.plans) ? data.plans : [];
+        const plans = Array.isArray(plansRes.data.plans)
+          ? plansRes.data.plans
+          : [];
         setPlan(plans.find((p) => p.code === planCode) || null);
+        setOrder(orderRes.data.order);
       })
       .catch((e) => {
         if (active) setError(errorMessage(e));
@@ -44,13 +52,42 @@ export default function Checkout() {
     };
   }, [planCode]);
 
+  // Chờ webhook xác nhận đã nhận tiền.
+  useEffect(() => {
+    if (!order?.order_code || paid) return;
+
+    let active = true;
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await paymentApi.orderStatus({
+          orderCode: order.order_code,
+        });
+        if (!active) return;
+        if (data.order?.status === "paid") {
+          setPaid(true);
+          // Cho người dùng thấy thông báo thành công trước khi chuyển trang.
+          setTimeout(() => {
+            if (active) navigate("/profile", { replace: true });
+          }, 2500);
+        }
+      } catch {
+        // Lỗi mạng tạm thời: bỏ qua, lần hỏi sau sẽ thử lại.
+      }
+    }, POLL_MS);
+
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [order?.order_code, paid, navigate]);
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(email);
+      await navigator.clipboard.writeText(order.order_code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("Trình duyệt không cho phép sao chép. Hãy chép email thủ công.");
+      setError("Trình duyệt không cho phép sao chép. Hãy chép mã thủ công.");
     }
   };
 
@@ -61,8 +98,8 @@ export default function Checkout() {
           <span className="eyebrow">THANH TOÁN</span>
           <h1>Quét mã để nâng cấp Premium</h1>
           <p>
-            Chuyển khoản đúng số tiền và ghi email của bạn vào nội dung chuyển
-            khoản để chúng tôi kích hoạt gói.
+            Chuyển khoản đúng số tiền và ghi mã đơn vào nội dung chuyển khoản.
+            Gói sẽ được kích hoạt tự động ngay sau khi nhận được tiền.
           </p>
         </div>
       </div>
@@ -103,27 +140,43 @@ export default function Checkout() {
                 </h2>
                 <div className="price-line" />
 
-                <p className="checkout-label">Nội dung chuyển khoản</p>
-                <div className="checkout-copy">
-                  <code className="break-word">{email}</code>
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={handleCopy}
-                  >
-                    {copied ? <Check size={16} /> : <Copy size={16} />}
-                    {copied ? "Đã chép" : "Chép"}
-                  </button>
-                </div>
+                {paid ? (
+                  <p className="form-message success" role="status">
+                    <strong>Đã nhận được thanh toán!</strong> Gói của bạn đã
+                    được kích hoạt. Đang chuyển tới trang tài khoản...
+                  </p>
+                ) : (
+                  <>
+                    <p className="checkout-label">Nội dung chuyển khoản</p>
+                    <div className="checkout-copy">
+                      <code className="break-word">{order?.order_code}</code>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={handleCopy}
+                      >
+                        {copied ? <Check size={16} /> : <Copy size={16} />}
+                        {copied ? "Đã chép" : "Chép"}
+                      </button>
+                    </div>
 
-                <div className="notice">
-                  <Info size={17} />
-                  <span>
-                    <strong>Hãy nhập email vào nội dung chuyển khoản.</strong>{" "}
-                    Đây là cách duy nhất để chúng tôi xác định tài khoản cần
-                    nâng cấp. Thiếu email, giao dịch sẽ không được kích hoạt.
-                  </span>
-                </div>
+                    <div className="notice">
+                      <Info size={17} />
+                      <span>
+                        <strong>
+                          Hãy nhập đúng mã này vào nội dung chuyển khoản.
+                        </strong>{" "}
+                        Hệ thống dựa vào mã để biết giao dịch thuộc về bạn.
+                        Thiếu mã, gói sẽ không được kích hoạt tự động.
+                      </span>
+                    </div>
+
+                    <p className="checkout-waiting" role="status">
+                      <Loader2 size={15} className="spin" />
+                      Đang chờ thanh toán... Trang này sẽ tự cập nhật.
+                    </p>
+                  </>
+                )}
 
                 <p className="checkout-label">Thông tin người nhận</p>
                 <p className="checkout-meta">
@@ -136,10 +189,10 @@ export default function Checkout() {
                     Kiểm tra số tiền đúng {currency.format(plan.price_vnd || 0)}
                     .
                   </li>
-                  <li>Dán email ở trên vào ô nội dung chuyển khoản.</li>
+                  <li>Dán mã đơn ở trên vào ô nội dung chuyển khoản.</li>
                   <li>
-                    Hoàn tất chuyển khoản, gói sẽ được kích hoạt trong vòng 24
-                    giờ.
+                    Hoàn tất chuyển khoản và đợi tại trang này — gói được kích
+                    hoạt tự động sau vài giây.
                   </li>
                 </ol>
 
