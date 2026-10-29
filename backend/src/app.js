@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import subscriptionRoutes from "./routes/subscription.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 
@@ -49,6 +50,8 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 
 app.use("/api/subscriptions", subscriptionRoutes);
+
+app.use("/api/admin", adminRoutes);
 
 // 404
 app.use((req, res) => {

@@ -415,7 +415,7 @@ export const getMe = async (req, res) => {
   try {
     const { data, error } = await req.supabase
       .from("profiles")
-      .select("id, full_name, email, created_at")
+      .select("id, full_name, email, role, created_at")
       .eq("id", req.user.id)
       .maybeSingle();
 

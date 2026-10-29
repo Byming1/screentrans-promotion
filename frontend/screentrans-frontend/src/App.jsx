@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import AdminRoute from './components/common/AdminRoute';
 import Home from './pages/Home';
 import Features from './pages/Features';
 import Pricing from './pages/Pricing';
@@ -12,6 +13,7 @@ import AuthConfirm from './pages/AuthConfirm';
 import AuthCallback from './pages/AuthCallback';
 import Profile from './pages/Profile';
 import Checkout from './pages/Checkout';
+import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
 
 export default function App() {
@@ -23,6 +25,7 @@ export default function App() {
     <Route path="/auth/callback" element={<AuthCallback/>}/>
     <Route path="/profile" element={<ProtectedRoute><Profile/></ProtectedRoute>}/>
     <Route path="/checkout/:planCode" element={<ProtectedRoute><Checkout/></ProtectedRoute>}/>
+    <Route path="/admin" element={<AdminRoute><Admin/></AdminRoute>}/>
     <Route path="*" element={<NotFound/>}/>
   </Routes></main><Footer/></>;
 }

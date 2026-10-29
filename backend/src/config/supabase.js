@@ -15,6 +15,24 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
+// Client bỏ qua RLS, dùng cho trang admin (đếm số liệu của mọi người dùng).
+// Key này có toàn quyền trên database nên tuyệt đối không được gửi ra frontend
+// và chỉ được dùng sau khi middleware đã xác nhận người gọi là admin.
+//
+// Null khi chưa cấu hình key: chỉ các endpoint admin báo lỗi, phần còn lại của
+// API vẫn chạy bình thường.
+const secretKey = process.env.SUPABASE_SECRET_KEY;
+
+export const supabaseAdmin = secretKey
+  ? createClient(supabaseUrl, secretKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
+  : null;
+
 // Client chạy dưới danh nghĩa người dùng để RLS được áp dụng đúng.
 export const createUserClient = (accessToken) =>
   createClient(supabaseUrl, supabaseKey, {

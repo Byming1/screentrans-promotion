@@ -36,6 +36,19 @@
 @media (max-width: 860px) { .checkout-grid { grid-template-columns: 1fr; max-width: 460px; } .checkout-info { padding: 26px; } }
 /* Trong menu mobile các mục xếp dọc nên nút cần trải hết chiều ngang. */
 @media (max-width: 760px) { .nav-register { margin-left: 0; justify-content: center; } }
+/* Trang quản trị: hàng thẻ số liệu (KPI row), không phải biểu đồ vì mỗi ô chỉ
+   là một con số duy nhất. */
+.admin-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.stat-tile { display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid #e1edf4; border-radius: 20px; padding: 24px; box-shadow: 0 10px 30px rgba(28,80,125,.06); }
+.stat-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: #e7f7ff; color: #2db0eb; margin-bottom: 6px; }
+.stat-label { font-size: 13px; font-weight: 700; color: #6c869a; }
+/* Số lớn dùng proportional figures (mặc định): tabular-nums làm con số rời rạc
+   ở cỡ chữ lớn. */
+.stat-value { font-size: 38px; font-weight: 850; letter-spacing: -1.5px; color: #1c506d; line-height: 1.1; }
+.stat-note { font-size: 12px; color: #93a8b7; line-height: 1.5; }
+@media (max-width: 980px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .stat-row { grid-template-columns: 1fr; } }
 /* Đăng nhập bằng Google */
 .auth-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 0; color: #93a8b7; font-size: 12px; font-weight: 700; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: #e4eef5; }
