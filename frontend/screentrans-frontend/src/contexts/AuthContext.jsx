@@ -3,6 +3,10 @@ import { authApi } from '../services/auth';
 
 const AuthContext = createContext(null);
 const TOKEN_KEY = 'screentrans_access_token';
+// PKCE code verifier phải sống qua lần chuyển trang sang Google rồi quay lại,
+// nên dùng sessionStorage (giữ theo tab) thay vì state trong bộ nhớ.
+const OAUTH_VERIFIER_KEY = 'screentrans_oauth_verifier';
+const OAUTH_FROM_KEY = 'screentrans_oauth_from';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -54,7 +58,34 @@ export function AuthProvider({ children }) {
     try { await loadMe(); } catch (error) { console.warn('Profile chưa sẵn sàng:', error); }
   }, [loadMe]);
 
-  return <AuthContext.Provider value={{ user, profile, loading, login, logout, loadMe, adoptSession }}>
+  // Bắt đầu đăng nhập Google: lấy URL + code verifier từ backend, giữ lại
+  // verifier rồi chuyển trang sang Google. Hàm này không trả về khi thành công.
+  const startGoogleLogin = useCallback(async (from) => {
+    const { data } = await authApi.googleAuthUrl();
+    if (!data.url || !data.codeVerifier) throw new Error('Máy chủ không trả về liên kết đăng nhập Google.');
+    sessionStorage.setItem(OAUTH_VERIFIER_KEY, data.codeVerifier);
+    if (from) sessionStorage.setItem(OAUTH_FROM_KEY, from);
+    else sessionStorage.removeItem(OAUTH_FROM_KEY);
+    window.location.assign(data.url);
+  }, []);
+
+  // Hoàn tất đăng nhập Google sau khi Google chuyển về /auth/callback.
+  const finishGoogleLogin = useCallback(async (code) => {
+    const codeVerifier = sessionStorage.getItem(OAUTH_VERIFIER_KEY);
+    const from = sessionStorage.getItem(OAUTH_FROM_KEY);
+    // Code và verifier chỉ dùng được một lần: xoá trước khi gọi để lần tải
+    // lại trang callback không thử lại với dữ liệu đã tiêu thụ.
+    sessionStorage.removeItem(OAUTH_VERIFIER_KEY);
+    sessionStorage.removeItem(OAUTH_FROM_KEY);
+    if (!codeVerifier) throw new Error('Phiên đăng nhập Google không hợp lệ. Vui lòng đăng nhập lại.');
+
+    const { data } = await authApi.oauthCallback({ code, codeVerifier });
+    if (!data.session?.access_token) throw new Error('Máy chủ không trả về access token.');
+    await adoptSession({ accessToken: data.session.access_token, user: data.user });
+    return from || '/profile';
+  }, [adoptSession]);
+
+  return <AuthContext.Provider value={{ user, profile, loading, login, logout, loadMe, adoptSession, startGoogleLogin, finishGoogleLogin }}>
     {children}
   </AuthContext.Provider>;
 }

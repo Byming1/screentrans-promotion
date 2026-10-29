@@ -1,10 +1,21 @@
-import { supabase, createUserClient } from "../config/supabase.js";
+import {
+  supabase,
+  createUserClient,
+  createOAuthClient,
+} from "../config/supabase.js";
 import { getEmailDomain, hasMailExchanger } from "../utils/emailDomain.js";
+
+const frontendUrl = (
+  process.env.FRONTEND_URL || "http://localhost:5173"
+).replace(/\/$/, "");
 
 // Link trong email xác thực phải trỏ về frontend, nếu không Supabase sẽ dùng
 // Site URL mặc định trong Dashboard. URL này cũng phải nằm trong danh sách
 // Redirect URLs của project.
-const emailRedirectTo = `${(process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "")}/auth/confirm`;
+const emailRedirectTo = `${frontendUrl}/auth/confirm`;
+
+// Google trả người dùng về Supabase, Supabase chuyển tiếp kèm ?code về đây.
+const oauthRedirectTo = `${frontendUrl}/auth/callback`;
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -191,6 +202,109 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+// POST /api/auth/oauth/google
+//
+// Chặng 1 của luồng PKCE: lấy URL đăng nhập Google kèm code_challenge.
+// code_verifier được trả về cho trình duyệt giữ (sessionStorage) rồi gửi lại ở
+// chặng 2 — backend không có session store nên không tự giữ được, và đây cũng
+// là cách client Supabase phía trình duyệt vẫn làm.
+export const googleAuthUrl = async (req, res) => {
+  try {
+    const { client, readCodeVerifier } = createOAuthClient();
+
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: oauthRedirectTo,
+        skipBrowserRedirect: true,
+      },
+    });
+
+    const codeVerifier = readCodeVerifier();
+
+    if (error || !data?.url || !codeVerifier) {
+      console.error(
+        "Google OAuth URL error:",
+        error?.message || "missing url or code verifier",
+      );
+      return res.status(502).json({
+        message:
+          "Không khởi tạo được đăng nhập Google. Vui lòng thử lại sau.",
+      });
+    }
+
+    return res.status(200).json({
+      url: data.url,
+      codeVerifier,
+    });
+  } catch (error) {
+    console.error("Google OAuth URL error:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+// POST /api/auth/oauth/callback
+//
+// Chặng 2: đổi authorization code + code_verifier lấy session.
+export const oauthCallback = async (req, res) => {
+  try {
+    const { code, codeVerifier } = req.body ?? {};
+
+    if (
+      typeof code !== "string" ||
+      !code.trim() ||
+      typeof codeVerifier !== "string" ||
+      !codeVerifier.trim()
+    ) {
+      return res.status(400).json({
+        code: "invalid_oauth_callback",
+        message: "Thiếu thông tin để hoàn tất đăng nhập Google.",
+      });
+    }
+
+    const { client } = createOAuthClient(codeVerifier.trim());
+
+    const { data, error } = await client.auth.exchangeCodeForSession(
+      code.trim(),
+    );
+
+    if (error || !data?.session || !data?.user) {
+      // Code chỉ dùng được một lần và hết hạn nhanh, nên lỗi ở đây thường là
+      // người dùng tải lại trang callback hoặc quay lại bằng nút back.
+      console.warn(
+        "OAuth callback error:",
+        error?.message || "missing session",
+      );
+      return res.status(400).json({
+        code: "oauth_exchange_failed",
+        message:
+          "Liên kết đăng nhập Google đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.",
+      });
+    }
+
+    await syncProfileEmail(data.session.access_token, data.user);
+
+    return res.status(200).json({
+      message: "Login successful",
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+      },
+      session: {
+        access_token: data.session.access_token,
+        expires_in: data.session.expires_in,
+      },
+    });
+  } catch (error) {
+    console.error("OAuth callback error:", error);
     return res.status(500).json({
       message: "Internal server error",
     });

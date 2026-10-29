@@ -40,3 +40,18 @@ export const confirmLimiter = rateLimit({
   limit: 20,
   skipSuccessfulRequests: true,
 });
+
+// Luồng OAuth: người dùng có thể bấm đăng nhập Google rồi đổi ý nhiều lần,
+// nên để rộng hơn login. Mỗi lần chỉ tạo URL, chưa tốn gì ở phía Supabase.
+export const oauthStartLimiter = rateLimit({
+  ...base,
+  limit: 30,
+});
+
+// Đổi authorization code lấy session: chặn dò code, nhưng không tính các lần
+// thành công để người dùng đăng nhập lại nhiều lần không bị khoá.
+export const oauthCallbackLimiter = rateLimit({
+  ...base,
+  limit: 20,
+  skipSuccessfulRequests: true,
+});

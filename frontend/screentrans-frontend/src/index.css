@@ -36,3 +36,8 @@
 @media (max-width: 860px) { .checkout-grid { grid-template-columns: 1fr; max-width: 460px; } .checkout-info { padding: 26px; } }
 /* Trong menu mobile các mục xếp dọc nên nút cần trải hết chiều ngang. */
 @media (max-width: 760px) { .nav-register { margin-left: 0; justify-content: center; } }
+/* Đăng nhập bằng Google */
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 0; color: #93a8b7; font-size: 12px; font-weight: 700; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: #e4eef5; }
+.auth-google { margin-top: 14px; }
+.auth-google svg { flex-shrink: 0; }

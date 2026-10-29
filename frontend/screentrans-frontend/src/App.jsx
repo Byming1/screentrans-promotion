@@ -9,6 +9,7 @@ import Download from './pages/Download';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AuthConfirm from './pages/AuthConfirm';
+import AuthCallback from './pages/AuthCallback';
 import Profile from './pages/Profile';
 import Checkout from './pages/Checkout';
 import NotFound from './pages/NotFound';
@@ -19,6 +20,7 @@ export default function App() {
     <Route path="/pricing" element={<Pricing/>}/><Route path="/download" element={<Download/>}/>
     <Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/>
     <Route path="/auth/confirm" element={<AuthConfirm/>}/>
+    <Route path="/auth/callback" element={<AuthCallback/>}/>
     <Route path="/profile" element={<ProtectedRoute><Profile/></ProtectedRoute>}/>
     <Route path="/checkout/:planCode" element={<ProtectedRoute><Checkout/></ProtectedRoute>}/>
     <Route path="*" element={<NotFound/>}/>
