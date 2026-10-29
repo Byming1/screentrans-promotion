@@ -3,7 +3,7 @@
 // Khi đổi giá gói trong Supabase, nhớ tạo lại ảnh QR tương ứng rồi thay file ở đây.
 export const bankAccount = {
   holder: 'PHAM QUANG MINH',
-  provider: 'MoMo / VietQR (Napas 247)',
+  provider: 'TPBank — VietQR (Napas 247)',
 };
 
 // key = subscription_plans.code

@@ -184,7 +184,7 @@ export default function Checkout() {
                 </p>
 
                 <ol className="checkout-steps">
-                  <li>Mở app ngân hàng hoặc MoMo, quét mã QR bên cạnh.</li>
+                  <li>Mở app ngân hàng, quét mã QR bên cạnh.</li>
                   <li>
                     Kiểm tra số tiền đúng {currency.format(plan.price_vnd || 0)}
                     .

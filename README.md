@@ -45,8 +45,11 @@ Business.
 
 ### Cấu hình
 
-1. Chạy `backend/sql/001_payments.sql` trong Supabase SQL Editor (tạo bảng
-   `payments`, RLS và hàm `activate_paid_order`).
+1. Chạy trong Supabase SQL Editor, theo thứ tự:
+   - `backend/sql/001_payments.sql` — tạo bảng `payments`, RLS và hàm
+     `activate_paid_order`.
+   - `backend/sql/002_payment_fixes.sql` — bản sửa đang dùng (xem *Những gì 002
+     sửa* bên dưới). **Bắt buộc chạy**, nếu không gói sẽ bị kích hoạt sai.
 2. Thêm vào `backend/.env`:
 
    ```
@@ -55,20 +58,53 @@ Business.
 
    Cần `SUPABASE_SECRET_KEY` (xem phần dưới) vì webhook ghi dữ liệu thay người
    dùng, không có access token của họ.
-3. Trong SePay: liên kết tài khoản ngân hàng, rồi thêm webhook trỏ tới
-   `https://<backend>/api/payments/webhook/sepay`, kiểu xác thực **API Key**,
-   giá trị đúng bằng `SEPAY_WEBHOOK_API_KEY`.
+3. Trong SePay: liên kết tài khoản ngân hàng (hiện dùng **TPBank**), rồi thêm
+   webhook trỏ tới `https://<backend>/api/payments/webhook/sepay`:
+   - Loại giao dịch: **Có tiền vào**
+   - Định dạng dữ liệu: **JSON**
+   - Kiểu xác thực: **API Key**, giá trị đúng bằng `SEPAY_WEBHOOK_API_KEY`
+     (SePay gửi header `Authorization: Apikey <key>`)
 
 Webhook trả `{"success": true}` kèm HTTP 200 như SePay yêu cầu; sai thì SePay
 retry tới 7 lần trong 5 giờ. Việc gọi lại nhiều lần là an toàn: `activate_paid_order`
 dùng `SELECT ... FOR UPDATE` và trả `already_paid` nên gói không bị kích hoạt hai lần.
 
+### Ba thứ webhook phải đảm bảo
+
+- **Đúng người** — `payments.user_id` được chốt từ access token lúc tạo đơn, và
+  `activate_paid_order` đọc lại `user_id` từ chính row đó. Webhook chỉ gửi mã
+  đơn, không gửi user nào, nên không thể gán gói sang người khác. Mã đơn là thứ
+  duy nhất nối giao dịch ngoài đời với người đã trả tiền.
+- **Đúng giá** — `amount_vnd` lấy từ `subscription_plans.price_vnd` lúc tạo đơn,
+  không bao giờ từ client. So sánh diễn ra hai lần: ở controller (để ghi log rõ)
+  và lại trong transaction SQL. Trả thiếu → `underpaid`, không kích hoạt. Webhook
+  không cho biết số tiền → cũng **không** kích hoạt.
+- **Đúng thời gian** — `activated_at = now()` nên quyền lợi có hiệu lực ngay khi
+  tiền vào; chỉ `expires_at` mới nối tiếp vào hạn gói cũ (gia hạn sớm không bị
+  cắt ngắn thời gian đã trả tiền).
+
+### Những gì 002 sửa
+
+- `transferAmount` không đọc được (thiếu field, `null`, chuỗi rác) từng cho
+  `Number(...)` ra `NaN`; `NaN < giá` là `false` nên đơn **được kích hoạt dù
+  không biết người dùng trả bao nhiêu**. Giờ bị từ chối ở cả Node và SQL.
+- Gia hạn sớm từng đặt `activated_at` ở tương lai, khiến
+  `GET /subscriptions/my` trả `pending` và người vừa trả tiền **tụt về quyền lợi
+  gói free** cho tới ngày hết hạn cũ.
+- Một giao dịch ngân hàng từng có thể kích hoạt nhiều đơn (nội dung lẫn nhiều
+  mã). Giờ dừng sau đơn đầu tiên, và SQL từ chối `duplicate_txn`.
+- Cửa sổ thanh toán 1 tiếng → 24 tiếng, và `createOrder` tái dùng đơn pending
+  còn hạn thay vì tạo mã mới mỗi lần mở trang checkout (trước đây mở lại trang
+  là mã đổi, lệch với mã người dùng vừa ghi vào nội dung chuyển khoản).
+
 ### Lưu ý
 
-- Số tiền luôn lấy từ `subscription_plans` trong database, không lấy từ client.
-- Trả thiếu tiền thì đơn **không** được kích hoạt, chỉ ghi log để xử lý tay.
-- Gia hạn khi gói cũ còn hạn sẽ **nối tiếp** vào ngày hết hạn cũ, không cắt ngắn.
 - Mã đơn chỉ dùng `A-Z` và `2-9` (bỏ `0/O/1/I/L`) để người dùng không gõ sai.
+- Nội dung chuyển khoản được quét ở cả ba field `code`, `content`, `description`
+  (viết thường và dấu `-` `_` `.` chèn giữa mã đều nhận được).
+- Ảnh QR trong `frontend/.../public/qr/` đã nhúng sẵn số tiền. **Đổi giá gói
+  trong Supabase thì phải tạo lại ảnh QR**, nếu không số tiền trên QR sẽ lệch
+  với `price_vnd` và mọi giao dịch thành `underpaid`.
 
 ## Cấu hình trang quản trị
 
