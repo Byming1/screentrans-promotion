@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { authApi } from '../services/auth';
+import { landingPath } from '../utils/authRedirect';
 
 const AuthContext = createContext(null);
 const TOKEN_KEY = 'screentrans_access_token';
@@ -45,8 +46,11 @@ export function AuthProvider({ children }) {
     setProfile(null);
     // Không lưu refresh token: khi access token hết hạn, người dùng đăng nhập lại.
     // Endpoint /me có thể thất bại nếu bảng profiles/RLS chưa được cấu hình.
-    try { await loadMe(); } catch (error) { console.warn('Profile chưa sẵn sàng:', error); }
-    return data;
+    // Trả kèm profile để nơi gọi biết role mà điều hướng, vì state `profile`
+    // chưa kịp cập nhật ngay sau khi hàm này trả về.
+    let profile = null;
+    try { profile = (await loadMe()).profile; } catch (error) { console.warn('Profile chưa sẵn sàng:', error); }
+    return { ...data, profile };
   };
 
   // Dùng cho luồng xác thực email: backend đã đổi token_hash thành session,
@@ -55,7 +59,8 @@ export function AuthProvider({ children }) {
     sessionStorage.setItem(TOKEN_KEY, accessToken);
     setUser(confirmedUser);
     setProfile(null);
-    try { await loadMe(); } catch (error) { console.warn('Profile chưa sẵn sàng:', error); }
+    try { return (await loadMe()).profile; } catch (error) { console.warn('Profile chưa sẵn sàng:', error); }
+    return null;
   }, [loadMe]);
 
   // Bắt đầu đăng nhập Google: lấy URL + code verifier từ backend, giữ lại
@@ -81,8 +86,8 @@ export function AuthProvider({ children }) {
 
     const { data } = await authApi.oauthCallback({ code, codeVerifier });
     if (!data.session?.access_token) throw new Error('Máy chủ không trả về access token.');
-    await adoptSession({ accessToken: data.session.access_token, user: data.user });
-    return from || '/profile';
+    const profile = await adoptSession({ accessToken: data.session.access_token, user: data.user });
+    return landingPath(profile, from);
   }, [adoptSession]);
 
   return <AuthContext.Provider value={{ user, profile, loading, login, logout, loadMe, adoptSession, startGoogleLogin, finishGoogleLogin }}>

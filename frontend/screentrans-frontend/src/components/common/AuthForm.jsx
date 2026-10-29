@@ -5,6 +5,7 @@ import { logo } from '../../constants/brand';
 import { authApi } from '../../services/auth';
 import { errorMessage, errorCode } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { landingPath } from '../../utils/authRedirect';
 
 // Logo Google theo đúng màu thương hiệu; lucide-react không có icon này.
 function GoogleIcon() {
@@ -66,8 +67,8 @@ export default function AuthForm({ mode }) {
           : 'Đăng ký thành công! Bạn có thể đăng nhập.');
         setValues((prev) => ({ ...prev, password: '', confirmPassword: '' }));
       } else {
-        await login(credentials);
-        navigate(location.state?.from || '/profile', { replace: true });
+        const { profile } = await login(credentials);
+        navigate(landingPath(profile, location.state?.from), { replace: true });
       }
     } catch (err) {
       setError(errorMessage(err));

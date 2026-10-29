@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../services/auth';
 import { errorMessage } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { landingPath } from '../utils/authRedirect';
 
 export default function AuthConfirm() {
   const [params] = useSearchParams();
@@ -22,8 +23,8 @@ export default function AuthConfirm() {
 
     authApi.confirmEmail({ tokenHash, type })
       .then(async ({ data }) => {
-        await adoptSession({ accessToken: data.session.access_token, user: data.user });
-        navigate('/profile', { replace: true });
+        const profile = await adoptSession({ accessToken: data.session.access_token, user: data.user });
+        navigate(landingPath(profile), { replace: true });
       })
       .catch((err) => setRequestError(errorMessage(err)));
   }, [tokenHash, type, adoptSession, navigate]);
