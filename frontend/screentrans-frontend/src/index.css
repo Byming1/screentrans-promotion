@@ -18,5 +18,21 @@
 /* Nút đăng ký cạnh link đăng nhập; thu gọn padding để không chiếm chỗ của nav. */
 .nav-register { padding: 9px 16px; margin-left: 10px; }
 @media (max-width: 700px) { .profile-grid { grid-template-columns: 1fr; } }
+/* Màn hình thanh toán QR */
+.checkout-grid { display: grid; grid-template-columns: minmax(0,420px) minmax(0,1fr); gap: 32px; align-items: start; max-width: 940px; margin-inline: auto; }
+.checkout-qr { background: #fff; border: 1px solid #e1edf4; border-radius: 22px; padding: 18px; box-shadow: 0 14px 35px rgba(45,148,192,.08); }
+.checkout-qr img { width: 100%; height: auto; display: block; border-radius: 14px; }
+.checkout-info { background: #fff; border: 1px solid #e1edf4; border-radius: 22px; padding: 32px; }
+.checkout-info h2 { font-size: 34px; margin: 16px 0 10px; letter-spacing: -1px; }
+.checkout-info h2 small { font-size: 15px; color: #8197a6; font-weight: 500; }
+.checkout-label { font-size: 13px; font-weight: 800; color: #24455c; margin: 20px 0 8px; }
+.checkout-meta { font-size: 14px; color: #6c869a; margin: 0; }
+.checkout-copy { display: flex; align-items: center; gap: 10px; border: 1px solid #dceaf3; border-radius: 12px; padding: 10px 10px 10px 14px; background: #f8fcff; }
+.checkout-copy code { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; color: #1c506d; }
+.checkout-copy .btn { padding: 9px 14px; flex-shrink: 0; }
+/* Tailwind preflight bỏ list-style nên phải khai báo lại để thấy số thứ tự. */
+.checkout-steps { list-style: decimal outside; margin: 20px 0 24px; padding-left: 22px; color: #6c869a; font-size: 14px; line-height: 1.9; }
+.checkout-empty { text-align: center; display: grid; gap: 16px; justify-items: center; }
+@media (max-width: 860px) { .checkout-grid { grid-template-columns: 1fr; max-width: 460px; } .checkout-info { padding: 26px; } }
 /* Trong menu mobile các mục xếp dọc nên nút cần trải hết chiều ngang. */
 @media (max-width: 760px) { .nav-register { margin-left: 0; justify-content: center; } }

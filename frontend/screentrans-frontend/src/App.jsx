@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AuthConfirm from './pages/AuthConfirm';
 import Profile from './pages/Profile';
+import Checkout from './pages/Checkout';
 import NotFound from './pages/NotFound';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
     <Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/>
     <Route path="/auth/confirm" element={<AuthConfirm/>}/>
     <Route path="/profile" element={<ProtectedRoute><Profile/></ProtectedRoute>}/>
+    <Route path="/checkout/:planCode" element={<ProtectedRoute><Checkout/></ProtectedRoute>}/>
     <Route path="*" element={<NotFound/>}/>
   </Routes></main><Footer/></>;
 }

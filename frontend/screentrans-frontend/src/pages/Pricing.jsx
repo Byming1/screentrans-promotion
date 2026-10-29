@@ -9,6 +9,7 @@ import {
   formatScanLimit,
 } from "../utils/planFeatures";
 import { useAuth } from "../contexts/AuthContext";
+import { hasQr } from "../constants/payment";
 
 const currency = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -48,7 +49,8 @@ export default function Pricing() {
           <span className="eyebrow">BẢNG GIÁ</span>
           <h1>Các gói ScreenTrans</h1>
           <p>
-            Thông tin lấy từ hệ thống. Website hiện chưa tích hợp thanh toán.
+            Chọn gói phù hợp và thanh toán bằng mã QR. Gói được kích hoạt sau
+            khi chúng tôi đối soát giao dịch.
           </p>
         </div>
       </div>
@@ -92,6 +94,16 @@ export default function Pricing() {
                     <button className="btn btn-outline full" disabled>
                       Đang kiểm tra tài khoản...
                     </button>
+                  ) : hasQr(plan.code) ? (
+                    // Gói trả phí: dẫn tới màn hình QR. Khách chưa đăng nhập phải
+                    // đăng nhập trước để lấy đúng email ghi vào nội dung chuyển khoản.
+                    <Link
+                      className="btn btn-primary full"
+                      to={user ? `/checkout/${plan.code}` : "/login"}
+                      state={user ? undefined : { from: `/checkout/${plan.code}` }}
+                    >
+                      Mua gói
+                    </Link>
                   ) : user ? (
                     <Link className="btn btn-outline full" to="/profile">
                       Xem gói của tôi
@@ -106,8 +118,8 @@ export default function Pricing() {
             })}
           </div>
           <p className="fine-print">
-            Các gói hiển thị nhằm giới thiệu quyền lợi; chưa hỗ trợ mua hoặc gia
-            hạn trên website.
+            Thanh toán bằng chuyển khoản QR. Vui lòng ghi email tài khoản vào
+            nội dung chuyển khoản; gói sẽ được kích hoạt trong vòng 24 giờ.
           </p>
         </div>
       </section>
