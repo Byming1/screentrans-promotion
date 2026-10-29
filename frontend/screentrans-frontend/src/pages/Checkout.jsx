@@ -57,29 +57,40 @@ export default function Checkout() {
     if (!order?.order_code || paid) return;
 
     let active = true;
-    const timer = setInterval(async () => {
+
+    const poll = async () => {
       try {
         const { data } = await paymentApi.orderStatus({
           orderCode: order.order_code,
         });
-        if (!active) return;
-        if (data.order?.status === "paid") {
-          setPaid(true);
-          // Cho người dùng thấy thông báo thành công trước khi chuyển trang.
-          setTimeout(() => {
-            if (active) navigate("/profile", { replace: true });
-          }, 2500);
-        }
+        if (active && data.order?.status === "paid") setPaid(true);
       } catch {
         // Lỗi mạng tạm thời: bỏ qua, lần hỏi sau sẽ thử lại.
       }
-    }, POLL_MS);
+    };
+
+    // Hỏi ngay một lần: webhook có thể đã về xong trước khi trang kịp tải
+    // (người dùng chuyển khoản rồi mới mở lại trang), khi đó không nên bắt họ
+    // đợi thêm một nhịp POLL_MS.
+    poll();
+    const timer = setInterval(poll, POLL_MS);
 
     return () => {
       active = false;
       clearInterval(timer);
     };
-  }, [order?.order_code, paid, navigate]);
+  }, [order?.order_code, paid]);
+
+  // Chuyển hướng phải nằm ở effect riêng, không nằm trong callback của effect
+  // polling: `paid` là dependency của effect đó, nên setPaid(true) làm React
+  // chạy cleanup (active = false) trước khi setTimeout kịp nổ — khiến người
+  // dùng thấy thông báo thành công rồi kẹt lại ở trang thanh toán.
+  useEffect(() => {
+    if (!paid) return;
+    // Cho người dùng thấy thông báo thành công trước khi chuyển trang.
+    const timer = setTimeout(() => navigate("/profile", { replace: true }), 2500);
+    return () => clearTimeout(timer);
+  }, [paid, navigate]);
 
   const handleCopy = async () => {
     try {
