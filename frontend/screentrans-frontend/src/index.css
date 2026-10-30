@@ -1290,7 +1290,7 @@ button:disabled {
   display: block;
   border-radius: 14px;
   background: #0d2b3b;
-  aspect-ratio: 14 / 16;
+  aspect-ratio: 13 / 16;
   height: min(88vh, 860px);
 }
 @media (max-width: 520px) {
