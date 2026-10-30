@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Video demo host trên Cloudinary, không commit vào repo
+public/demo/

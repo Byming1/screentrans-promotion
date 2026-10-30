@@ -4,7 +4,7 @@ import { Check, Copy, Info, ArrowLeft, Loader2 } from "lucide-react";
 import { subscriptionApi } from "../services/subscriptions";
 import { paymentApi } from "../services/payments";
 import { errorMessage } from "../services/api";
-import { paymentQr, bankAccount } from "../constants/payment";
+import { bankAccount } from "../constants/payment";
 import { formatDuration } from "../utils/planFeatures";
 
 const currency = new Intl.NumberFormat("vi-VN", {
@@ -27,7 +27,10 @@ export default function Checkout() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const qrSrc = paymentQr[planCode];
+  // QR do backend sinh riêng cho đơn này: đã nhúng số tiền và nội dung chuyển
+  // khoản (email người đăng ký) nên người dùng không phải tự gõ gì.
+  const qrSrc = order?.qr_url;
+  const memo = order?.transfer_memo ?? "";
 
   // Tải gói + tạo đơn pending để lấy mã đối soát.
   useEffect(() => {
@@ -94,7 +97,7 @@ export default function Checkout() {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(order.order_code);
+      await navigator.clipboard.writeText(memo);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -130,7 +133,7 @@ export default function Checkout() {
               </Link>
             </div>
           )}
-          {!loading && plan && !qrSrc && (
+          {!loading && plan && !error && !qrSrc && (
             <div className="checkout-empty">
               <p>Gói {plan.name} chưa hỗ trợ thanh toán bằng mã QR.</p>
               <Link className="btn btn-outline" to="/pricing">
@@ -160,7 +163,7 @@ export default function Checkout() {
                   <>
                     <p className="checkout-label">Nội dung chuyển khoản</p>
                     <div className="checkout-copy">
-                      <code className="break-word">{order?.order_code}</code>
+                      <code className="break-word">{memo}</code>
                       <button
                         type="button"
                         className="btn btn-outline"
@@ -175,10 +178,12 @@ export default function Checkout() {
                       <Info size={17} />
                       <span>
                         <strong>
-                          Hãy nhập đúng mã này vào nội dung chuyển khoản.
+                          Quét mã QR thì số tiền và nội dung đã được điền sẵn.
                         </strong>{" "}
-                        Hệ thống dựa vào mã để biết giao dịch thuộc về bạn.
-                        Thiếu mã, gói sẽ không được kích hoạt tự động.
+                        Đây là email của bạn viết liền, không dấu — ngân hàng
+                        không cho phép ký tự <code>@</code> và <code>.</code>{" "}
+                        trong nội dung. Nếu chuyển khoản thủ công, hãy ghi đúng
+                        chuỗi trên để hệ thống nhận ra giao dịch của bạn.
                       </span>
                     </div>
 
@@ -197,10 +202,9 @@ export default function Checkout() {
                 <ol className="checkout-steps">
                   <li>Mở app ngân hàng, quét mã QR bên cạnh.</li>
                   <li>
-                    Kiểm tra số tiền đúng {currency.format(plan.price_vnd || 0)}
-                    .
+                    Kiểm tra số tiền đúng {currency.format(plan.price_vnd || 0)}{" "}
+                    và nội dung khớp với chuỗi ở trên.
                   </li>
-                  <li>Dán mã đơn ở trên vào ô nội dung chuyển khoản.</li>
                   <li>
                     Hoàn tất chuyển khoản và đợi tại trang này — gói được kích
                     hoạt tự động sau vài giây.

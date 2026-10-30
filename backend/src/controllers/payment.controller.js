@@ -2,17 +2,42 @@ import crypto from "node:crypto";
 
 import { supabase, supabaseAdmin } from "../config/supabase.js";
 import { generateOrderCode, extractOrderCodes } from "../utils/orderCode.js";
+import {
+  bankConfig,
+  buildQrUrl,
+  buildTransferMemo,
+  normalizeMemo,
+} from "../utils/bankQr.js";
+
+// Đơn trả về cho frontend: thêm QR động và nội dung chuyển khoản.
+//
+// QR được dựng ở backend chứ không ở frontend vì số tài khoản nhận tiền là cấu
+// hình của hệ thống (BANK_*), không nên nhúng vào bundle và không nên để client
+// quyết định tiền chảy về đâu.
+const withQr = (order) => ({
+  ...order,
+  qr_url: buildQrUrl({ amount: order.amount_vnd, memo: order.transfer_memo }),
+});
 
 // POST /api/payments/orders
 //
-// Tạo đơn pending và trả về mã đối soát để người dùng ghi vào nội dung chuyển
-// khoản. Chưa có tiền vào ở bước này.
+// Tạo đơn pending và trả về QR động + nội dung chuyển khoản (email của người
+// đăng ký) để người dùng quét. Chưa có tiền vào ở bước này.
 export const createOrder = async (req, res) => {
   try {
     if (!supabaseAdmin) {
       return res.status(503).json({
         code: "payments_not_configured",
         message: "Chức năng thanh toán chưa được cấu hình trên máy chủ.",
+      });
+    }
+
+    // Thiếu số tài khoản nhận tiền thì không dựng được QR, và người dùng sẽ
+    // thấy một trang checkout không thể trả tiền. Báo lỗi sớm.
+    if (!bankConfig()) {
+      return res.status(503).json({
+        code: "payments_not_configured",
+        message: "Chưa cấu hình tài khoản nhận thanh toán trên máy chủ.",
       });
     }
 
@@ -50,7 +75,9 @@ export const createOrder = async (req, res) => {
     // mở lại trang sẽ thấy mã khác với mã vừa ghi vào nội dung chuyển khoản.
     const { data: existing, error: existingError } = await supabaseAdmin
       .from("payments")
-      .select("id, order_code, amount_vnd, status, expires_at")
+      .select(
+        "id, order_code, amount_vnd, status, expires_at, transfer_memo, transfer_memo_key",
+      )
       .eq("user_id", req.user.id)
       .eq("plan_id", plan.id)
       .eq("status", "pending")
@@ -64,11 +91,31 @@ export const createOrder = async (req, res) => {
       return res.status(500).json({ message: "Không đọc được đơn thanh toán." });
     }
 
-    // Chỉ tái dùng khi giá chưa đổi; nếu đổi giá thì đơn cũ không còn khớp số
-    // tiền trên ảnh QR nữa.
-    if (existing && existing.amount_vnd === plan.price_vnd) {
+    // Nội dung chuyển khoản là email của chính người đang đăng nhập, lấy từ
+    // access token (req.user) — không lấy từ body, nếu không người dùng có thể
+    // khai email của người khác và chiếm gói khi người kia chuyển khoản.
+    const memo = buildTransferMemo(req.user.email);
+    const memoKey = normalizeMemo(memo);
+
+    // Dưới 6 ký tự thì nội dung quá ngắn để khớp an toàn: nó có thể xuất hiện
+    // tình cờ trong nội dung chuyển khoản của người khác.
+    if (memoKey.length < 6) {
+      return res.status(400).json({
+        code: "memo_unavailable",
+        message:
+          "Tài khoản của bạn chưa có email hợp lệ để làm nội dung chuyển khoản.",
+      });
+    }
+
+    // Chỉ tái dùng khi giá và nội dung chưa đổi; nếu đổi thì QR cũ không còn
+    // khớp đơn nữa.
+    if (
+      existing &&
+      existing.amount_vnd === plan.price_vnd &&
+      existing.transfer_memo === memo
+    ) {
       return res.status(200).json({
-        order: existing,
+        order: withQr(existing),
         plan: { code: plan.code, name: plan.name, price_vnd: plan.price_vnd },
       });
     }
@@ -81,12 +128,16 @@ export const createOrder = async (req, res) => {
       amount_vnd: plan.price_vnd,
       order_code: generateOrderCode(),
       provider: "sepay",
+      transfer_memo: memo,
+      transfer_memo_key: memoKey,
     };
 
     const { data, error } = await supabaseAdmin
       .from("payments")
       .insert(payload)
-      .select("id, order_code, amount_vnd, status, expires_at")
+      .select(
+        "id, order_code, amount_vnd, status, expires_at, transfer_memo, transfer_memo_key",
+      )
       .single();
 
     if (error) {
@@ -95,7 +146,7 @@ export const createOrder = async (req, res) => {
     }
 
     return res.status(201).json({
-      order: data,
+      order: withQr(data),
       plan: { code: plan.code, name: plan.name, price_vnd: plan.price_vnd },
     });
   } catch (error) {
@@ -112,7 +163,9 @@ export const getOrderStatus = async (req, res) => {
   try {
     const { data, error } = await req.supabase
       .from("payments")
-      .select("order_code, status, amount_vnd, paid_at, expires_at")
+      .select(
+        "order_code, status, amount_vnd, paid_at, expires_at, transfer_memo",
+      )
       .eq("order_code", req.params.orderCode)
       .maybeSingle();
 
@@ -125,7 +178,7 @@ export const getOrderStatus = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy đơn thanh toán." });
     }
 
-    return res.status(200).json({ order: data });
+    return res.status(200).json({ order: withQr(data) });
   } catch (error) {
     console.error("Get order status error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -207,11 +260,31 @@ export const sepayWebhook = async (req, res) => {
       .join(" ");
     const codes = extractOrderCodes(content);
 
+    // Nội dung chuyển khoản giờ là email người đăng ký, nên đường khớp chính
+    // là tìm đơn pending có transfer_memo_key nằm trong nội dung. Mã ST... vẫn
+    // được quét trước để các đơn tạo theo cơ chế cũ không bị treo.
     if (!codes.length) {
-      // Vẫn trả 200: giao dịch không có mã đơn (người dùng quên ghi) không phải
-      // lỗi của webhook, trả lỗi chỉ làm SePay retry vô ích.
-      console.warn("SePay webhook: no order code in content:", content.slice(0, 120));
-      return res.status(200).json({ success: true, skipped: "no_order_code" });
+      const contentKey = normalizeMemo(content);
+
+      const { data: matched, error: matchError } = await supabaseAdmin.rpc(
+        "match_order_by_memo",
+        { p_content_key: contentKey, p_amount: amountOrNull },
+      );
+
+      if (matchError) {
+        console.error("match_order_by_memo error:", matchError.message);
+        return res.status(500).json({ success: false });
+      }
+
+      if (matched) codes.push(matched);
+    }
+
+    if (!codes.length) {
+      // Vẫn trả 200: giao dịch không khớp đơn nào (người dùng ghi sai nội dung,
+      // hoặc tiền vào từ nguồn khác) không phải lỗi của webhook — trả lỗi chỉ
+      // làm SePay retry vô ích.
+      console.warn("SePay webhook: no matching order for content:", content.slice(0, 120));
+      return res.status(200).json({ success: true, skipped: "no_order_match" });
     }
 
     // Một giao dịch chỉ trả tiền cho một đơn. Nếu nội dung chứa nhiều mã (người

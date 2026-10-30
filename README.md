@@ -18,6 +18,37 @@ Website giới thiệu sản phẩm ScreenTrans.
 - Subscription Status
 - Admin dashboard (`/admin`)
 
+## Video demo ở trang chủ
+
+Video **không được commit vào repo** (`public/demo/` đã vào `.gitignore`): file
+27MB sẽ phình lịch sử git vĩnh viễn và mỗi lần clone đều phải tải lại. Thay vào
+đó host trên Cloudinary — họ tự transcode và phát qua CDN.
+
+1. Upload video lên Cloudinary (Media Library → Upload, hoặc CLI), copy URL
+   dạng:
+
+   ```
+   https://res.cloudinary.com/<cloud-name>/video/upload/v<version>/<public-id>.mp4
+   ```
+
+2. Thêm vào `frontend/screentrans-frontend/.env`, và vào **Environment
+   Variables của Vercel** cho môi trường production:
+
+   ```
+   VITE_DEMO_VIDEO_URL=<URL vừa copy>
+   ```
+
+Thiếu biến này thì section demo tự ẩn, trang chủ vẫn chạy bình thường — nên
+không ai phải thấy một khung video lỗi khi chưa cấu hình.
+
+Ảnh poster được suy ra từ chính URL đó (Cloudinary trả thumbnail khi đổi `.mp4`
+thành `.jpg`), nên không cần cấu hình thêm. Biến `VITE_*` bị nhúng vào bundle,
+nhưng URL video vốn công khai nên không sao — **không** đặt API secret của
+Cloudinary ở đây.
+
+Muốn giảm dung lượng thêm thì thay `/upload/` bằng `/upload/q_auto,f_auto/`
+trong URL để Cloudinary tự chọn chất lượng và định dạng theo trình duyệt.
+
 ## Thanh toán & kích hoạt gói tự động
 
 ### Vì sao không dùng IPN của MoMo
@@ -35,10 +66,12 @@ Business.
 ### Luồng hiện tại
 
 1. Người dùng vào `/checkout/:planCode` → backend tạo đơn `pending` trong bảng
-   `payments` kèm **mã đơn** (ví dụ `STA7K2M9QX`).
-2. Người dùng chuyển khoản và ghi mã đơn vào nội dung chuyển khoản.
+   `payments`, lấy **email của người đăng nhập** làm nội dung chuyển khoản, rồi
+   sinh **mã QR động** (VietQR) đã nhúng sẵn số tiền và nội dung đó.
+2. Người dùng quét QR — số tiền và nội dung đã được điền sẵn, không phải gõ gì.
 3. SePay phát hiện tiền vào → gọi `POST /api/payments/webhook/sepay`.
-4. Backend tìm mã đơn trong nội dung, kiểm tra số tiền, rồi gọi hàm SQL
+4. Backend khớp nội dung chuyển khoản với email của đơn (xem *Khớp đơn bằng
+   email* bên dưới), kiểm tra số tiền, rồi gọi hàm SQL
    `activate_paid_order` để đánh dấu đã trả **và** tạo subscription trong cùng
    một transaction.
 5. Trang checkout hỏi trạng thái mỗi 5 giây nên tự chuyển sang "đã thanh toán".
@@ -50,11 +83,23 @@ Business.
      `activate_paid_order`.
    - `backend/sql/002_payment_fixes.sql` — bản sửa đang dùng (xem *Những gì 002
      sửa* bên dưới). **Bắt buộc chạy**, nếu không gói sẽ bị kích hoạt sai.
+   - `backend/sql/003_email_memo.sql` — thêm cột nội dung chuyển khoản và hàm
+     `match_order_by_memo`. **Bắt buộc chạy**, nếu không webhook không khớp
+     được đơn nào.
 2. Thêm vào `backend/.env`:
 
    ```
    SEPAY_WEBHOOK_API_KEY=<chuỗi ngẫu nhiên tự đặt>
+
+   # Tài khoản nhận tiền — dùng để sinh QR động
+   BANK_ACCOUNT_NUMBER=<số tài khoản>
+   BANK_CODE=TPBank
+   BANK_ACCOUNT_HOLDER=PHAM QUANG MINH
    ```
+
+   Thiếu `BANK_ACCOUNT_NUMBER` hoặc `BANK_CODE` thì `POST /payments/orders` trả
+   503 — không dựng được QR nên không để người dùng vào trang không trả được
+   tiền.
 
    Cần `SUPABASE_SECRET_KEY` (xem phần dưới) vì webhook ghi dữ liệu thay người
    dùng, không có access token của họ.
@@ -69,12 +114,34 @@ Webhook trả `{"success": true}` kèm HTTP 200 như SePay yêu cầu; sai thì 
 retry tới 7 lần trong 5 giờ. Việc gọi lại nhiều lần là an toàn: `activate_paid_order`
 dùng `SELECT ... FOR UPDATE` và trả `already_paid` nên gói không bị kích hoạt hai lần.
 
+### Khớp đơn bằng email
+
+Nội dung chuyển khoản là email người đăng ký thay vì mã đơn ngẫu nhiên: người
+dùng không phải gõ hay dán gì, và nếu quét QR thì nội dung đã nhúng sẵn.
+
+Chuỗi VietQR và app ngân hàng đều bỏ `@` `.` `+` khỏi nội dung và viết hoa phần
+còn lại, nên **nội dung của đơn là dạng đã chuẩn hoá** (`an.vu+x@gmail.com` →
+`ANVUXGMAILCOM`), không phải email nguyên bản. Trang checkout hiển thị đúng
+chuỗi đó để khớp với cái người dùng thấy khi quét QR — nếu hiện email nguyên bản
+thì họ tưởng hệ thống sinh sai nội dung.
+
+Webhook chuẩn hoá nội dung nhận được theo cùng cách rồi tìm `transfer_memo_key`
+của đơn nằm trong đó (`match_order_by_memo`).
+
+Một người có thể có nhiều đơn pending cùng email (mở cả trang gói tháng và gói
+năm). Số tiền là thứ phân biệt: hàm chọn đơn có `amount_vnd` **lớn nhất mà số
+tiền đã trả vẫn đủ**, nên trả 599.000đ kích hoạt gói năm chứ không phải gói
+tháng. Key ngắn hơn 6 ký tự bị bỏ qua để không khớp tình cờ.
+
+Mã đơn `ST...` vẫn được quét trước, nên các đơn tạo theo cơ chế cũ không bị treo.
+
 ### Ba thứ webhook phải đảm bảo
 
-- **Đúng người** — `payments.user_id` được chốt từ access token lúc tạo đơn, và
-  `activate_paid_order` đọc lại `user_id` từ chính row đó. Webhook chỉ gửi mã
-  đơn, không gửi user nào, nên không thể gán gói sang người khác. Mã đơn là thứ
-  duy nhất nối giao dịch ngoài đời với người đã trả tiền.
+- **Đúng người** — `payments.user_id` *và* `transfer_memo` đều được chốt từ
+  access token lúc tạo đơn (`req.user.email`), không bao giờ từ body; nếu không
+  người dùng có thể khai email của người khác rồi chiếm gói khi người kia chuyển
+  khoản. `activate_paid_order` đọc lại `user_id` từ chính row đó, nên webhook
+  không thể gán gói sang người khác.
 - **Đúng giá** — `amount_vnd` lấy từ `subscription_plans.price_vnd` lúc tạo đơn,
   không bao giờ từ client. So sánh diễn ra hai lần: ở controller (để ghi log rõ)
   và lại trong transaction SQL. Trả thiếu → `underpaid`, không kích hoạt. Webhook
@@ -99,12 +166,14 @@ dùng `SELECT ... FOR UPDATE` và trả `already_paid` nên gói không bị kí
 
 ### Lưu ý
 
-- Mã đơn chỉ dùng `A-Z` và `2-9` (bỏ `0/O/1/I/L`) để người dùng không gõ sai.
 - Nội dung chuyển khoản được quét ở cả ba field `code`, `content`, `description`
-  (viết thường và dấu `-` `_` `.` chèn giữa mã đều nhận được).
-- Ảnh QR trong `frontend/.../public/qr/` đã nhúng sẵn số tiền. **Đổi giá gói
-  trong Supabase thì phải tạo lại ảnh QR**, nếu không số tiền trên QR sẽ lệch
-  với `price_vnd` và mọi giao dịch thành `underpaid`.
+  (viết thường và dấu `-` `_` `.` chèn giữa đều nhận được).
+- QR được sinh động ở backend (`order.qr_url`, qua `qr.sepay.vn`) với số tiền
+  lấy từ `subscription_plans.price_vnd` lúc tạo đơn, nên **đổi giá gói không
+  cần vẽ lại ảnh QR nữa**. Các ảnh tĩnh trong `frontend/.../public/qr/` không
+  còn được dùng.
+- Số tài khoản nhận tiền chỉ nằm ở backend (`BANK_*`), không nhúng vào bundle
+  frontend — client không được quyết định tiền chảy về đâu.
 
 ## Cấu hình trang quản trị
 

@@ -9,7 +9,6 @@ import {
   formatScanLimit,
 } from "../utils/planFeatures";
 import { useAuth } from "../contexts/AuthContext";
-import { hasQr } from "../constants/payment";
 
 const currency = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -94,7 +93,7 @@ export default function Pricing() {
                     <button className="btn btn-outline full" disabled>
                       Đang kiểm tra tài khoản...
                     </button>
-                  ) : hasQr(plan.code) ? (
+                  ) : plan.price_vnd > 0 ? (
                     // Gói trả phí: dẫn tới màn hình QR. Khách chưa đăng nhập phải
                     // đăng nhập trước để lấy đúng email ghi vào nội dung chuyển khoản.
                     <Link

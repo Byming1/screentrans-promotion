@@ -64,3 +64,7 @@
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: #e4eef5; }
 .auth-google { margin-top: 14px; }
 .auth-google svg { flex-shrink: 0; }
+/* Video demo ở trang chủ */
+.demo-frame { max-width: 920px; margin-inline: auto; background: #fff; border: 1px solid #deedf5; border-radius: 22px; padding: 14px; box-shadow: 0 18px 45px rgba(45,148,192,.12); }
+.demo-frame video { width: 100%; display: block; border-radius: 14px; background: #0d2b3b; aspect-ratio: 16 / 9; }
+@media (max-width: 520px) { .demo-frame { padding: 8px; border-radius: 16px; } }
