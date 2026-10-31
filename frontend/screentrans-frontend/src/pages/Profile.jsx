@@ -71,10 +71,6 @@ export default function Profile() {
             <p>
               <strong>Email:</strong> {profile?.email || user?.email}
             </p>
-            <p>
-              <strong>ID:</strong>{" "}
-              <span className="break-word">{user?.id}</span>
-            </p>
             {profileError && (
               <p className="form-message error">
                 Không thể tải hồ sơ: {profileError}. Kiểm tra bảng profiles và
