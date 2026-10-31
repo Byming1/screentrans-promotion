@@ -4,6 +4,7 @@ import {
   register,
   login,
   getMe,
+  updateMe,
   resendConfirmation,
   confirmEmail,
   googleAuthUrl,
@@ -18,6 +19,7 @@ import {
   confirmLimiter,
   oauthStartLimiter,
   oauthCallbackLimiter,
+  updateProfileLimiter,
 } from "../middlewares/rateLimit.middleware.js";
 
 const router = Router();
@@ -29,5 +31,6 @@ router.post("/oauth/callback", oauthCallbackLimiter, oauthCallback);
 router.post("/resend", resendLimiter, resendConfirmation);
 router.post("/confirm", confirmLimiter, confirmEmail);
 router.get("/me", requireAuth, getMe);
+router.patch("/me", requireAuth, updateProfileLimiter, updateMe);
 
 export default router;

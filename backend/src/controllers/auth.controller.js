@@ -2,6 +2,7 @@ import {
   supabase,
   createUserClient,
   createOAuthClient,
+  authFetch,
 } from "../config/supabase.js";
 import { getEmailDomain, hasMailExchanger } from "../utils/emailDomain.js";
 
@@ -381,11 +382,23 @@ export const confirmEmail = async (req, res) => {
       token_hash: tokenHash.trim(),
     });
 
-    if (error || !data.session) {
+    if (error) {
       return res.status(400).json({
         code: "invalid_or_expired_token",
         message:
           "Liên kết xác thực đã hết hạn hoặc không hợp lệ. Vui lòng gửi lại email xác thực.",
+      });
+    }
+
+    // Khi Supabase bật "Secure email change" (mặc định), đổi email cần xác nhận
+    // ở CẢ hai địa chỉ. Lần xác nhận đầu thành công nhưng chưa có session —
+    // không phải lỗi, chỉ là chưa xong.
+    if (!data.session) {
+      return res.status(200).json({
+        code: "email_change_pending_other_address",
+        message:
+          "Đã xác nhận ở địa chỉ này. Vui lòng mở liên kết xác nhận ở địa chỉ email còn lại để hoàn tất thay đổi.",
+        session: null,
       });
     }
 
@@ -404,6 +417,131 @@ export const confirmEmail = async (req, res) => {
     });
   } catch (error) {
     console.error("Confirm email error:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+const FULL_NAME_MAX = 100;
+
+// PATCH /api/auth/me
+//
+// Đổi họ tên và/hoặc email đăng nhập. Hai thứ này nằm ở hai nơi khác nhau:
+//   - họ tên: user_metadata trong auth.users + bản sao ở profiles.full_name
+//   - email:  auth.users.email, và chỉ đổi thật sau khi người dùng bấm liên kết
+//             xác nhận Supabase gửi tới địa chỉ mới (type=email_change, đã được
+//             /auth/confirm xử lý). Vì vậy không ghi email mới vào profiles ở
+//             đây — bản sao đó được cập nhật ở lần đăng nhập/xác thực kế tiếp.
+export const updateMe = async (req, res) => {
+  try {
+    const { fullName, email } = req.body ?? {};
+
+    const wantsName = fullName !== undefined;
+    const wantsEmail = email !== undefined;
+
+    if (!wantsName && !wantsEmail) {
+      return res.status(400).json({
+        message: "Không có thông tin nào cần cập nhật.",
+      });
+    }
+
+    let trimmedName;
+    if (wantsName) {
+      if (typeof fullName !== "string") {
+        return res.status(400).json({ message: "Họ tên không hợp lệ." });
+      }
+      trimmedName = fullName.trim();
+      if (trimmedName.length < 2 || trimmedName.length > FULL_NAME_MAX) {
+        return res.status(400).json({
+          message: `Họ tên phải có từ 2 đến ${FULL_NAME_MAX} ký tự.`,
+        });
+      }
+    }
+
+    let trimmedEmail;
+    if (wantsEmail) {
+      if (typeof email !== "string" || !isEmail(email)) {
+        return res.status(400).json({ message: "Email không hợp lệ." });
+      }
+      trimmedEmail = email.trim();
+    }
+
+    // Email trùng email hiện tại thì coi như không đổi: Supabase vẫn gửi thư
+    // xác nhận trong trường hợp này, gây hiểu nhầm là đã đổi thành công.
+    const emailChanged =
+      wantsEmail &&
+      trimmedEmail.toLowerCase() !== (req.user.email ?? "").toLowerCase();
+
+    if (emailChanged && !(await hasMailExchanger(getEmailDomain(trimmedEmail)))) {
+      return res.status(400).json({
+        code: "email_domain_unreachable",
+        message:
+          "Tên miền email không nhận được thư. Vui lòng kiểm tra lại địa chỉ email.",
+      });
+    }
+
+    const attributes = {};
+    if (wantsName) attributes.data = { full_name: trimmedName };
+    if (emailChanged) attributes.email = trimmedEmail;
+
+    if (Object.keys(attributes).length > 0) {
+      const { error } = await authFetch("/user", {
+        method: "PUT",
+        accessToken: req.accessToken,
+        body: attributes,
+        redirectTo: emailChanged ? emailRedirectTo : undefined,
+      });
+
+      if (error) {
+        if (error.code === "email_exists" || error.status === 422) {
+          return res.status(409).json({
+            code: "email_already_registered",
+            message: "Email này đã được sử dụng cho một tài khoản khác.",
+          });
+        }
+
+        if (error.status === 429) {
+          return res.status(429).json({
+            message: "Bạn vừa yêu cầu đổi email. Vui lòng thử lại sau ít phút.",
+          });
+        }
+
+        console.warn("Update user error:", error.message);
+        return res.status(error.status >= 400 && error.status < 500 ? error.status : 500)
+          .json({ message: "Không cập nhật được thông tin. Vui lòng thử lại." });
+      }
+    }
+
+    // Họ tên hiển thị khắp nơi đọc từ profiles, nên phải ghi cả bản sao đó.
+    // Khác với syncProfileEmail: ở đây lỗi phải báo cho người dùng, nếu không
+    // họ thấy "đã lưu" mà tên trên trang vẫn như cũ.
+    if (wantsName) {
+      const { error } = await req.supabase
+        .from("profiles")
+        .upsert(
+          { id: req.user.id, email: req.user.email, full_name: trimmedName },
+          { onConflict: "id" },
+        );
+
+      if (error) {
+        console.warn("Could not update profile name:", error.message);
+        return res.status(500).json({
+          message: "Đã đổi tên trên tài khoản nhưng chưa lưu được vào hồ sơ.",
+        });
+      }
+    }
+
+    return res.status(200).json({
+      message: emailChanged
+        ? "Đã lưu thông tin. Vui lòng kiểm tra hộp thư của email mới để xác nhận thay đổi."
+        : "Đã lưu thông tin.",
+      emailConfirmationRequired: emailChanged,
+      // Email đăng nhập chưa đổi cho tới khi người dùng xác nhận.
+      pendingEmail: emailChanged ? trimmedEmail : null,
+    });
+  } catch (error) {
+    console.error("UpdateMe error:", error);
     return res.status(500).json({
       message: "Internal server error",
     });

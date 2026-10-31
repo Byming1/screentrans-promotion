@@ -8,4 +8,9 @@ export const authApi = {
   resendConfirmation: ({ email }) => api.post('/auth/resend', { email }),
   confirmEmail: ({ tokenHash, type }) => api.post('/auth/confirm', { token_hash: tokenHash, type }),
   me: () => api.get('/auth/me'),
+  // Bỏ qua các trường không được truyền: backend chỉ cập nhật thứ nó nhận được.
+  updateMe: ({ fullName, email }) => api.patch('/auth/me', {
+    ...(fullName === undefined ? {} : { fullName }),
+    ...(email === undefined ? {} : { email }),
+  }),
 };

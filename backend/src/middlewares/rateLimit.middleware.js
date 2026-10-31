@@ -56,6 +56,13 @@ export const oauthCallbackLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+// Cập nhật hồ sơ: đổi email kích hoạt một email từ Supabase nên cần chặn spam,
+// nhưng vẫn đủ rộng để người dùng sửa lại họ tên vài lần.
+export const updateProfileLimiter = rateLimit({
+  ...base,
+  limit: 10,
+});
+
 // Tạo đơn thanh toán: mỗi lần tạo một row trong database nên cần chặn spam,
 // nhưng vẫn để người dùng đổi gói / thử lại vài lần.
 export const createOrderLimiter = rateLimit({

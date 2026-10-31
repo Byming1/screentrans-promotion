@@ -28,6 +28,10 @@ export const requireAuth = async (req, res, next) => {
 
     req.user = data.user;
 
+    // Giữ lại token thô: các endpoint gọi thẳng GoTrue (đổi email / họ tên)
+    // cần nó làm Bearer, không dùng được qua client PostgREST bên dưới.
+    req.accessToken = token;
+
     // Tạo client riêng cho request của người dùng
     req.supabase = createUserClient(token);
 

@@ -1028,6 +1028,19 @@ button:disabled {
 .break-word {
   overflow-wrap: anywhere;
 }
+/* Ghi chú dưới form sửa hồ sơ (vì sao đổi email cần xác nhận). */
+.profile-hint {
+  color: #778b9e;
+  font-size: 13px;
+  line-height: 1.7;
+}
+/* Nút Lưu / Huỷ nằm cạnh nhau, xuống dòng khi card bị thu hẹp. */
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
 .nav-signout {
   background: transparent;
   border: 0;

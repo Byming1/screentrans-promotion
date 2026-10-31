@@ -10,6 +10,9 @@ export default function AuthConfirm() {
   const navigate = useNavigate();
   const { adoptSession } = useAuth();
   const [requestError, setRequestError] = useState('');
+  // Đổi email cần xác nhận ở cả hai địa chỉ: lần đầu chỉ có thông báo, chưa có
+  // session để đăng nhập.
+  const [notice, setNotice] = useState('');
   // StrictMode mount component hai lần ở môi trường dev; token_hash chỉ dùng
   // được một lần nên phải chặn lần gọi thứ hai.
   const started = useRef(false);
@@ -23,6 +26,7 @@ export default function AuthConfirm() {
 
     authApi.confirmEmail({ tokenHash, type })
       .then(async ({ data }) => {
+        if (!data.session?.access_token) { setNotice(data.message); return; }
         const profile = await adoptSession({ accessToken: data.session.access_token, user: data.user });
         navigate(landingPath(profile), { replace: true });
       })
@@ -38,6 +42,14 @@ export default function AuthConfirm() {
       <h1>Xác thực không thành công</h1>
       <p className="form-message error" role="alert">{error}</p>
       <Link className="btn btn-primary full" to="/login">Về trang đăng nhập</Link>
+    </div></section>;
+  }
+
+  if (notice) {
+    return <section className="auth-section"><div className="auth-box">
+      <h1>Cần xác nhận thêm một bước</h1>
+      <p className="form-message" role="status">{notice}</p>
+      <Link className="btn btn-outline full" to="/profile">Về trang tài khoản</Link>
     </div></section>;
   }
 

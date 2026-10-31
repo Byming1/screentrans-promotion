@@ -225,3 +225,22 @@ Code đã sẵn sàng, nhưng cần bật provider ở hai nơi sau mới dùng 
 
 Biến môi trường không cần thêm gì mới: backend dựng URL callback từ
 `FRONTEND_URL` đã có.
+
+## Đổi thông tin tài khoản
+
+Trang `/profile` cho phép sửa họ tên và email đăng nhập (`PATCH /api/auth/me`).
+
+- **Họ tên** đổi ngay: ghi vào `user_metadata` của `auth.users` và cột
+  `profiles.full_name`.
+- **Email** không đổi ngay. Supabase gửi liên kết xác nhận tới địa chỉ mới; chỉ
+  sau khi người dùng bấm liên kết đó thì email đăng nhập mới thay đổi. Cột
+  `profiles.email` được đồng bộ ở lần đăng nhập / xác thực kế tiếp.
+
+Mặc định Supabase bật *Authentication → Providers → Email → Secure email change*,
+nghĩa là liên kết xác nhận được gửi tới **cả hai** địa chỉ (cũ và mới) và phải
+mở cả hai mới hoàn tất. Trang `/auth/confirm` xử lý trường hợp này: lần xác nhận
+đầu hiện thông báo còn thiếu một bước thay vì báo lỗi. Tắt tuỳ chọn đó nếu muốn
+chỉ cần xác nhận ở địa chỉ mới.
+
+URL trong email xác nhận cũng trỏ về `<FRONTEND_URL>/auth/confirm`, nên đường dẫn
+này phải nằm trong *URL Configuration → Redirect URLs* như mục trên.

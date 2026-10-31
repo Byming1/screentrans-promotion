@@ -48,6 +48,54 @@ export const createUserClient = (accessToken) =>
     },
   });
 
+// Gọi trực tiếp GoTrue (Supabase Auth) dưới danh nghĩa người dùng.
+//
+// Vì sao không dùng supabase.auth.updateUser: hàm đó đọc session từ storage
+// của client, còn backend chỉ có access token do frontend gửi kèm request
+// (không lưu refresh token nên cũng không dựng lại session được). Bản thân SDK
+// cũng chỉ gửi access token đó làm Bearer, nên gọi thẳng REST là tương đương.
+//
+// Trả về { data, error } giống SDK để nơi gọi xử lý một kiểu.
+export const authFetch = async (path, { method, accessToken, body, redirectTo }) => {
+  try {
+    // GoTrue đọc đích chuyển hướng của email từ query string, không phải body.
+    const query = redirectTo
+      ? `?redirect_to=${encodeURIComponent(redirectTo)}`
+      : "";
+
+    const response = await fetch(`${supabaseUrl}/auth/v1${path}${query}`, {
+      method,
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: {
+          status: response.status,
+          code: data?.error_code ?? data?.error ?? null,
+          message:
+            data?.msg || data?.message || `Auth request failed (${response.status})`,
+        },
+      };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    return {
+      data: null,
+      error: { status: 502, code: null, message: error.message },
+    };
+  }
+};
+
 const OAUTH_STORAGE_KEY = "screentrans-oauth";
 
 // Supabase SDK ghi/đọc PKCE code verifier qua storage adapter (giá trị luôn
