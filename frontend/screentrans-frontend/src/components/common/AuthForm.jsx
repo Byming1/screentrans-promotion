@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Mail, LockKeyhole, UserRound } from 'lucide-react';
 import { logo } from '../../constants/brand';
@@ -29,6 +29,31 @@ export default function AuthForm({ mode }) {
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const update = (key) => (event) => setValues((prev) => ({ ...prev, [key]: event.target.value }));
+  // Đánh dấu đang chờ chuyển trang sang Google, để biết có nên mở lại nút khi
+  // người dùng quay lại trang này hay không.
+  const redirecting = useRef(false);
+
+  // Khi chuyển sang Google, trang này có thể được trình duyệt giữ trong bfcache.
+  // Nếu người dùng bấm Back / thoát giữa lúc chọn tài khoản, trang quay lại với
+  // state cũ nên `busy` vẫn bật và nút bị vô hiệu hoá mãi. Mở lại nút khi trang
+  // được hiển thị trở lại (pageshow khi phục hồi, hoặc tab/trang hiện lại).
+  useEffect(() => {
+    const release = () => {
+      if (!redirecting.current) return; // tránh mở nút khi form mật khẩu đang gửi
+      redirecting.current = false;
+      setBusy(false);
+    };
+    const onPageShow = (event) => { if (event.persisted) release(); };
+    const onVisibility = () => { if (document.visibilityState === 'visible') release(); };
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('popstate', release);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('popstate', release);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
 
   const handleResend = async () => {
     setError(''); setSuccess(''); setBusy(true);
@@ -42,11 +67,13 @@ export default function AuthForm({ mode }) {
 
   const handleGoogleLogin = async () => {
     setError(''); setSuccess(''); setNeedsConfirmation(false); setAlreadyRegistered(false); setBusy(true);
+    redirecting.current = true;
     try {
       // Thành công thì trang chuyển sang Google, không cần tắt busy.
       await startGoogleLogin(location.state?.from);
     } catch (err) {
       setError(err.response ? errorMessage(err) : err.message);
+      redirecting.current = false;
       setBusy(false);
     }
   };
