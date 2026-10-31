@@ -48,8 +48,7 @@ export default function Pricing() {
           <span className="eyebrow">BẢNG GIÁ</span>
           <h1>Các gói ScreenTrans</h1>
           <p>
-            Chọn gói phù hợp và thanh toán bằng mã QR. Gói được kích hoạt sau
-            khi chúng tôi đối soát giao dịch.
+            Chọn gói phù hợp và thanh toán bằng mã QR.
           </p>
         </div>
       </div>
