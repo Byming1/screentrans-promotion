@@ -1,13 +1,14 @@
 {
   "version": "0.1.5",
   "channel": "beta",
-  "published": false,
-  "url": null,
+  "published": true,
+  "url": "https://github.com/Byming1/screentrans-promotion/releases/download/desktop-v0.1.5/ScreenTransSetup-0.1.5-win64.exe",
   "bytes": 86159718,
   "sha256": "d20dd8d7c14d95791fbac0ab990a16a390396d6a0bf343666b839812e78c7924",
   "platform": "windows-x64",
   "minimumWindowsBuild": 19041,
   "signed": false,
   "loginMode": "account",
-  "nativeWindowsTested": false
+  "nativeWindowsTested": false,
+  "nativeWindowsTestSummary": " Đã kiểm tra DXGI với ảnh mẫu đen trắng trên Windows thật; WGC và độ khớp ảnh màu chưa đạt kiểm chứng."
 }

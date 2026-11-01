@@ -32,7 +32,7 @@ export default function DownloadPage() {
               <CircleHelp size={19} />
               <span>
                 Bản beta{!release.signed ? " chưa ký số" : ""}.
-                {!release.nativeWindowsTested && " Chưa kiểm thử capture/overlay trên Windows thật."}
+                {release.nativeWindowsTestSummary || (!release.nativeWindowsTested && " Chưa kiểm thử capture/overlay trên Windows thật.")}
                 {release.loginMode === "activation-code" && " Phiên bản này vẫn cần mã kích hoạt."}
               </span>
             </div>

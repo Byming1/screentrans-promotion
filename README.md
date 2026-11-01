@@ -367,14 +367,18 @@ này phải nằm trong *URL Configuration → Redirect URLs* như mục trên.
 
 ## Desktop Account Integration (Beta 0.1.5)
 
-Deployment checkpoint, 2026-11-02: migration `desktop_account_access_005` was
-applied to the configured production project and recorded as version
-`20261101172722`. Its four private tables, RPC permissions, profile-role
-restrictions and rejection of an invalid session were verified. Existing
-business-table row counts were unchanged. Do not replay migration 005 on this
-project. Render deployment and live account sign-in/grant/revocation tests are
-still pending; this is not a public-launch approval. See
-`docs/desktop-deployment-20261102.json` for the checkpoint.
+Deployment checkpoint, 2026-11-02: migrations `desktop_account_access_005`
+(`20261101172722`) and `desktop_server_config_006` (`20261101185005`) are applied.
+Do not replay them on this project. Git auto-deploy was verified on Vercel and
+Render; A30 account authorization is enabled and the model remains active.
+Real browser/password sign-in, device approval, two-device Free quota, manual
+admin Premium grant without payment, manual/auto WSS inference, SQL revocation
+and expiry, denial and logout all passed with disposable fixtures. Both test
+accounts and their data were removed; business-table counts returned to the
+pre-test values. No real customer grant was changed. Google OAuth, signup
+email delivery and native Windows account UI are not verified by this run.
+The installer is published as a beta, not a production qualification approval.
+See `docs/desktop-deployment-20261102.json` for the exact scope.
 
 The existing admin screen remains the owner of manual grants. It writes
 `subscriptions.user_id`, `plan_id`, `activated_at`, `expires_at`, `revoked_at`.
@@ -461,7 +465,9 @@ Installer assets belong in GitHub Releases, not git history. The uploader
 `scripts/publish-desktop.mjs --draft /path/to/ScreenTransSetup-0.1.5-win64.exe`
 requires `GH_TOKEN` supplied privately and verifies installer and uploaded
 SHA-256/size. Draft mode does not enable the website download button. Publish
-and update `src/desktop-release.json` only after the live release gate passes.
+and update `src/desktop-release.json` after verifying the relevant live checks.
+The published 0.1.5 prerelease explicitly retains the native WGC/color failures
+and untested paths below; it does not represent a full production release gate.
 If an upload stops after creating a draft, inspect that release and resume
 with `--draft --release-id ID`; a matching uploaded EXE is verified and reused,
 never overwritten. GitHub's `untagged-*` URLs are accepted only for drafts.
@@ -476,5 +482,9 @@ verify live-game behavior, hybrid-GPU switching or production account
 integration. Follow-up WGC pixel verification failed, and the color fixture was
 rejected by the reference guard (mean absolute difference 25.65/255). These
 are unresolved qualification failures, not proof of their root causes. The
-candidate remains a draft. See `docs/desktop-native-0.1.5-r2-20261101.json`
-for the exact scope, failed checks and diagnostic limitations.
+same EXE is published as 0.1.5 beta, with updated revision-3 bundle notices;
+no capture fix or native account-UI test is implied. See
+`docs/desktop-native-0.1.5-r2-20261101.json` for the exact scope, failed checks
+and diagnostic limitations. Download: `/download` on the live website, or
+the `desktop-v0.1.5` GitHub prerelease. Subsequent code pushes auto-deploy;
+new SQL migrations and inference-host files still require explicit deployment.
