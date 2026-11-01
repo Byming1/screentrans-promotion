@@ -4,6 +4,7 @@ import {
   getAdminStats,
   getAdminUsers,
   getUserSubscriptions,
+  grantSubscription,
   updateSubscriptionKey,
 } from "../controllers/admin.controller.js";
 
@@ -19,6 +20,12 @@ router.get(
   requireAuth,
   requireAdmin,
   getUserSubscriptions,
+);
+router.post(
+  "/users/:userId/subscriptions",
+  requireAuth,
+  requireAdmin,
+  grantSubscription,
 );
 router.patch(
   "/subscriptions/:subscriptionId",

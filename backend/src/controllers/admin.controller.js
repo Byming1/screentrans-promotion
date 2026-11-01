@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { supabaseAdmin } from "../config/supabase.js";
 
 // Gói trả phí được nhận ra bằng subscription_plans.code để số liệu không phụ
@@ -420,6 +422,117 @@ export const updateSubscriptionKey = async (req, res) => {
     });
   } catch (error) {
     console.error("Update subscription key error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Key kích hoạt cho gói cấp tay. Cùng dạng với key do luồng thanh toán sinh ra
+// (tiền tố ST- + chuỗi ngẫu nhiên) để app desktop không phải phân biệt.
+const generateActivationKey = () =>
+  `ST-${crypto.randomBytes(24).toString("base64url")}`;
+
+// POST /api/admin/users/:userId/subscriptions
+//
+// Cấp gói tay cho một người (tặng, đền bù, trả tiền ngoài luồng tự động...).
+// Không ghi gì vào bảng payments: ở đây không có tiền thật chạy qua, ghi vào
+// đó sẽ thổi phồng doanh thu trên chính trang này.
+export const grantSubscription = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { planCode } = req.body ?? {};
+
+    if (!PAID_PLAN_KEY[planCode]) {
+      return res.status(400).json({
+        message: "Chỉ cấp được gói tháng hoặc gói năm.",
+      });
+    }
+
+    const { data: authUser, error: authError } =
+      await supabaseAdmin.auth.admin.getUserById(userId);
+
+    if (authError || !authUser?.user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+
+    const { data: plan, error: planError } = await supabaseAdmin
+      .from("subscription_plans")
+      .select("id, code, name, duration_unit, duration_value")
+      .eq("code", planCode)
+      .maybeSingle();
+
+    if (planError || !plan) {
+      return res.status(404).json({ message: "Không tìm thấy gói này." });
+    }
+
+    // Gói còn hạn thì nối tiếp vào cuối, giống activate_paid_order: người đang
+    // còn 20 ngày mà được tặng thêm 1 tháng thì phải thành 50 ngày, không phải
+    // bị cắt còn 30.
+    const { data: actives, error: activeError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("expires_at")
+      .eq("user_id", userId)
+      .is("revoked_at", null)
+      .not("expires_at", "is", null)
+      .gt("expires_at", new Date().toISOString())
+      .order("expires_at", { ascending: false })
+      .limit(1);
+
+    if (activeError) {
+      console.error("Grant subscription lookup error:", activeError.message);
+      return res.status(500).json({ message: "Không kiểm tra được gói hiện có." });
+    }
+
+    const now = new Date();
+    const stackFrom = actives?.[0]?.expires_at
+      ? new Date(actives[0].expires_at)
+      : now;
+
+    const expiresAt = new Date(stackFrom);
+    if (plan.duration_unit === "day") {
+      expiresAt.setDate(expiresAt.getDate() + plan.duration_value);
+    } else if (plan.duration_unit === "month") {
+      expiresAt.setMonth(expiresAt.getMonth() + plan.duration_value);
+    } else if (plan.duration_unit === "year") {
+      expiresAt.setFullYear(expiresAt.getFullYear() + plan.duration_value);
+    }
+
+    const key = generateActivationKey();
+
+    const { data: created, error } = await supabaseAdmin
+      .from("subscriptions")
+      .insert({
+        user_id: userId,
+        plan_id: plan.id,
+        // Cột này có DEFAULT 'monthly': không truyền thì gói năm bị ghi nhầm
+        // thành tháng.
+        plan_name: PAID_PLAN_KEY[planCode],
+        activation_key_hash: key,
+        key_last4: key.slice(-4),
+        // Quyền lợi có hiệu lực ngay, chỉ ngày hết hạn mới cộng dồn.
+        activated_at: now.toISOString(),
+        expires_at:
+          plan.duration_unit === "unlimited" ? null : expiresAt.toISOString(),
+      })
+      .select("id, activated_at, expires_at")
+      .single();
+
+    if (error) {
+      console.error("Grant subscription error:", error.message);
+      return res.status(500).json({ message: "Không cấp được gói." });
+    }
+
+    return res.status(201).json({
+      subscription: {
+        id: created.id,
+        planName: plan.name,
+        planCode: plan.code,
+        activationKey: key,
+        activatedAt: created.activated_at,
+        expiresAt: created.expires_at,
+      },
+    });
+  } catch (error) {
+    console.error("Grant subscription error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -296,10 +296,13 @@ function SubscriptionRow({ sub, onSaved }) {
 }
 
 // Hộp thoại chi tiết một người dùng: danh sách gói + sửa key.
-function UserDetail({ userId, onClose, onKeyChanged }) {
+function UserDetail({ userId, onClose, onKeyChanged, onGranted }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
+  // Mã gói đang được cấp, cũng dùng làm cờ "đang bận" cho đúng nút đó.
+  const [granting, setGranting] = useState("");
+  const [grantError, setGrantError] = useState("");
   const closeRef = useRef(null);
 
   // userId không đổi trong vòng đời hộp thoại (đóng/mở lại là mount mới), nên
@@ -352,6 +355,40 @@ function UserDetail({ userId, onClose, onKeyChanged }) {
   };
 
   const subs = data?.subscriptions ?? [];
+  // Chỉ coi là "chưa có gói" khi không còn gói nào đang chạy. Người có gói đã
+  // hết hạn vẫn cấp thêm được (gia hạn tay), nên nút luôn hiện — chỉ đổi chữ.
+  const hasActive = subs.some((s) => s.status === "active");
+
+  const grant = async (planCode) => {
+    setGranting(planCode);
+    setGrantError("");
+    try {
+      const { data: payload } = await adminApi.grantSubscription(userId, planCode);
+      // Gói mới luôn là gói đang chạy nên cho lên đầu danh sách.
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              subscriptions: [
+                {
+                  ...payload.subscription,
+                  priceVnd: null,
+                  revokedAt: null,
+                  status: "active",
+                },
+                ...prev.subscriptions,
+              ],
+            }
+          : prev,
+      );
+      // Số liệu ở trang ngoài (gói tháng/năm còn hạn) đã đổi, phải tải lại.
+      onGranted?.();
+    } catch (err) {
+      setGrantError(errorMessage(err));
+    } finally {
+      setGranting("");
+    }
+  };
 
   return (
     <div
@@ -415,6 +452,43 @@ function UserDetail({ userId, onClose, onKeyChanged }) {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {!busy && !error && (
+            <div className="grant-box">
+              <div className="grant-copy">
+                <strong>{hasActive ? "Cấp thêm gói" : "Cấp gói cho người dùng"}</strong>
+                <span>
+                  {hasActive
+                    ? "Gói mới nối tiếp vào ngày hết hạn hiện tại, không cắt ngắn hạn cũ."
+                    : "Tạo gói trả phí thủ công và sinh activation key. Không ghi vào doanh thu."}
+                </span>
+              </div>
+              <div className="grant-actions">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-xs"
+                  onClick={() => grant("PREMIUM_MONTHLY")}
+                  disabled={Boolean(granting)}
+                >
+                  {granting === "PREMIUM_MONTHLY" ? "Đang cấp..." : "Cấp gói tháng"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-xs"
+                  onClick={() => grant("PREMIUM_YEARLY")}
+                  disabled={Boolean(granting)}
+                >
+                  {granting === "PREMIUM_YEARLY" ? "Đang cấp..." : "Cấp gói năm"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {grantError && (
+            <p className="form-message error grant-error" role="alert">
+              {grantError}
+            </p>
           )}
         </div>
       </div>
@@ -696,9 +770,10 @@ export default function Admin() {
         <UserDetail
           userId={openUserId}
           onClose={() => setOpenUserId(null)}
-          // Sửa key không đổi số liệu nào ở ngoài nên không cần tải lại cả
-          // trang; giữ hook này để sau có thêm thao tác khác thì nối vào.
+          // Sửa key không đổi số liệu nào ở ngoài nên không cần tải lại cả trang.
           onKeyChanged={undefined}
+          // Cấp gói thì có: số gói còn hạn và nhóm của người đó đều đổi.
+          onGranted={() => setReloadCount((n) => n + 1)}
         />
       )}
     </div>

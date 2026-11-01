@@ -1591,6 +1591,40 @@ button:disabled {
 .sub-row.current td:first-child {
   box-shadow: inset 3px 0 0 #43b9f4;
 }
+/* Khu cấp gói tay, đặt dưới bảng gói trong hộp thoại. */
+.grant-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  background: #f8fbfd;
+  border-top: 1px solid #eef5f9;
+}
+.grant-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.grant-copy strong {
+  font-size: 14px;
+  color: #1c506d;
+}
+.grant-copy span {
+  font-size: 12px;
+  color: #8ba1b1;
+  line-height: 1.5;
+}
+.grant-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.grant-error {
+  margin: 0 20px 16px;
+}
 /* Trên màn hẹp, bảng nào có đủ data-label thì đổi sang dạng thẻ xếp dọc: để
    nguyên dạng bảng thì các cột cuối nằm ngoài màn hình, phải cuộn ngang mới
    thấy (nút Sửa key ở hộp thoại, cột "đã trả" ở bảng gói).

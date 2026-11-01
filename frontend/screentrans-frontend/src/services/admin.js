@@ -6,4 +6,6 @@ export const adminApi = {
   userSubscriptions: (userId) => api.get(`/admin/users/${userId}/subscriptions`),
   updateSubscriptionKey: (subscriptionId, activationKey) =>
     api.patch(`/admin/subscriptions/${subscriptionId}`, { activationKey }),
+  grantSubscription: (userId, planCode) =>
+    api.post(`/admin/users/${userId}/subscriptions`, { planCode }),
 };

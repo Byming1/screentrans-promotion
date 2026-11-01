@@ -197,6 +197,29 @@ dính `\r\n` ở cuối do dán từ email, và `key_last4` được cập nhậ
 Ngày kích hoạt / hết hạn **cố ý không cho sửa**: chúng do luồng thanh toán tính
 ra từ bảng `payments`, sửa tay sẽ làm hai bảng lệch nhau.
 
+### Cấp gói tay
+
+Trong hộp thoại chi tiết có nút **Cấp gói tháng / Cấp gói năm** — dùng khi tặng
+gói, đền bù, hoặc nhận tiền ngoài luồng tự động. Nút luôn hiện, kể cả với người
+đã có gói (khi đó đổi chữ thành "Cấp thêm gói").
+
+Gói cấp tay hành xử giống gói mua qua `activate_paid_order`:
+
+- **Nối tiếp hạn cũ** — người còn 20 ngày mà được cấp thêm 1 tháng thì thành
+  50 ngày, không bị cắt còn 30.
+- **Có hiệu lực ngay** (`activated_at = now()`), chỉ `expires_at` mới cộng dồn.
+- **Tự sinh activation key** cùng dạng `ST-...` nên app desktop không phải
+  phân biệt gói mua với gói tặng.
+
+Điểm khác: **không ghi gì vào bảng `payments`**. Ở đây không có tiền thật chạy
+qua, ghi vào đó sẽ thổi phồng doanh thu hiển thị trên chính trang này. Hệ quả
+là người được tặng gói sẽ hiện ở bảng gói tháng/năm nhưng cột "đã trả" là 0 —
+đúng như thực tế.
+
+Lưu ý khi sửa code: cột `subscriptions.plan_name` có `DEFAULT 'monthly'`, nên
+khi tạo dòng mới phải truyền giá trị này, không thì gói năm bị ghi nhầm thành
+gói tháng.
+
 Doanh thu được cộng từ bảng `payments` (tiền thực nhận), không nhân ngược từ
 giá gói đang còn hạn: giá trong `subscription_plans` có thể đã bị sửa sau khi
 người dùng trả tiền.
