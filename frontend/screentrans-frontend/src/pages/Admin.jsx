@@ -76,7 +76,11 @@ function PlanBadge({ plan }) {
 
 // Bảng người dùng trả phí: dùng cho cả nhóm tháng và nhóm năm nên nhận sẵn
 // danh sách đã lọc thay vì tự lọc.
-function PaidTable({ title, note, rows, emptyText }) {
+//
+// Mỗi dòng mở được hộp thoại chi tiết giống bảng danh sách bên dưới: đây mới
+// là nơi admin hay làm việc nhất (xem key, gia hạn), nên không bắt họ phải
+// tìm lại cùng người đó ở bảng khác.
+function PaidTable({ title, note, rows, emptyText, onOpenUser }) {
   return (
     <section className="admin-panel">
       <header className="panel-head">
@@ -91,7 +95,7 @@ function PaidTable({ title, note, rows, emptyText }) {
         <p className="panel-empty">{emptyText}</p>
       ) : (
         <div className="table-scroll">
-          <table className="admin-table">
+          <table className="admin-table as-cards">
             <thead>
               <tr>
                 <th>Người dùng</th>
@@ -105,14 +109,29 @@ function PaidTable({ title, note, rows, emptyText }) {
               {rows.map((user) => {
                 const left = daysLeft(user.expiresAt);
                 return (
-                  <tr key={user.id}>
-                    <td>
+                  <tr
+                    key={user.id}
+                    className="row-clickable"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Xem gói của ${user.fullName || user.email}`}
+                    onClick={() => onOpenUser(user.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onOpenUser(user.id);
+                      }
+                    }}
+                  >
+                    <td data-label="Người dùng">
                       <span className="cell-strong">{user.fullName || "(chưa đặt tên)"}</span>
                       <span className="cell-sub">{user.email}</span>
                     </td>
-                    <td>{formatDate(user.activatedAt)}</td>
-                    <td>{user.expiresAt ? formatDate(user.expiresAt) : "Không giới hạn"}</td>
-                    <td>
+                    <td data-label="Kích hoạt">{formatDate(user.activatedAt)}</td>
+                    <td data-label="Hết hạn">
+                      {user.expiresAt ? formatDate(user.expiresAt) : "Không giới hạn"}
+                    </td>
+                    <td data-label="Còn lại">
                       {left == null ? (
                         "—"
                       ) : (
@@ -122,7 +141,7 @@ function PaidTable({ title, note, rows, emptyText }) {
                         </span>
                       )}
                     </td>
-                    <td className="align-right">
+                    <td className="align-right" data-label="Đã trả">
                       {currency.format(user.paidTotalVnd)}
                       {user.paidOrders > 1 && (
                         <span className="cell-sub">{user.paidOrders} đơn</span>
@@ -201,7 +220,9 @@ function SubscriptionRow({ sub, onSaved }) {
   };
 
   return (
-    <tr>
+    // Gói đang chạy được tô nhẹ: một người có thể có nhiều gói cũ, admin mở
+    // hộp thoại hầu như luôn để làm việc với gói hiện hành.
+    <tr className={sub.status === "active" ? "sub-row current" : "sub-row"}>
       <td data-label="Gói">
         <span className="cell-strong">{sub.planName || "(không rõ gói)"}</span>
         {sub.priceVnd != null && (
@@ -377,7 +398,7 @@ function UserDetail({ userId, onClose, onKeyChanged }) {
 
           {subs.length > 0 && (
             <div className="table-scroll">
-              <table className="admin-table">
+              <table className="admin-table as-cards">
                 <thead>
                   <tr>
                     <th>Gói</th>
@@ -545,19 +566,21 @@ export default function Admin() {
           <div className="admin-columns">
             <PaidTable
               title="Người dùng gói tháng"
-              note="Đang còn hạn, sắp hết hạn trước lên trên"
+              note="Sắp hết hạn lên trên · bấm một dòng để xem và sửa key"
               rows={[...monthlyUsers].sort(
                 (a, b) => new Date(a.expiresAt ?? 0) - new Date(b.expiresAt ?? 0),
               )}
               emptyText="Chưa có ai đang dùng gói tháng."
+              onOpenUser={setOpenUserId}
             />
             <PaidTable
               title="Người dùng gói năm"
-              note="Đang còn hạn, sắp hết hạn trước lên trên"
+              note="Sắp hết hạn lên trên · bấm một dòng để xem và sửa key"
               rows={[...yearlyUsers].sort(
                 (a, b) => new Date(a.expiresAt ?? 0) - new Date(b.expiresAt ?? 0),
               )}
               emptyText="Chưa có ai đang dùng gói năm."
+              onOpenUser={setOpenUserId}
             />
           </div>
 

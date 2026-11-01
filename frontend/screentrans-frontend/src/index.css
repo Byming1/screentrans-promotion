@@ -1584,34 +1584,47 @@ button:disabled {
   font-size: 12px;
   color: #9a2720;
 }
-/* Trên màn hẹp bảng chi tiết đổi sang dạng thẻ xếp dọc: để nguyên dạng bảng
-   thì cột key (thứ 5) nằm ngoài màn hình, phải cuộn ngang mới thấy nút Sửa —
-   mà sửa key mới là việc chính của hộp thoại này. */
+/* Gói đang còn hạn nổi bật hơn các gói đã hết hạn trong cùng hộp thoại. */
+.sub-row.current td {
+  background: #f7fcfe;
+}
+.sub-row.current td:first-child {
+  box-shadow: inset 3px 0 0 #43b9f4;
+}
+/* Trên màn hẹp, bảng nào có đủ data-label thì đổi sang dạng thẻ xếp dọc: để
+   nguyên dạng bảng thì các cột cuối nằm ngoài màn hình, phải cuộn ngang mới
+   thấy (nút Sửa key ở hộp thoại, cột "đã trả" ở bảng gói).
+   Bảng "Danh sách người dùng" không có data-label nên vẫn cuộn ngang như cũ —
+   6 cột xếp dọc sẽ thành một dải thẻ quá dài để lướt. */
 @media (max-width: 720px) {
   .modal-backdrop {
     padding: 16px 10px;
   }
-  .modal-body .admin-table thead {
+  .as-cards thead {
     display: none;
   }
-  .modal-body .admin-table,
-  .modal-body .admin-table tbody,
-  .modal-body .admin-table tr,
-  .modal-body .admin-table td {
+  .as-cards,
+  .as-cards tbody,
+  .as-cards tr,
+  .as-cards td {
     display: block;
     width: 100%;
   }
-  .modal-body .admin-table tr {
+  .as-cards tr {
     padding: 14px 16px;
     border-bottom: 1px solid #f2f7fa;
   }
-  .modal-body .admin-table td {
+  .as-cards td {
     padding: 4px 0;
     border: 0;
     white-space: normal;
   }
+  /* Số tiền căn phải chỉ hợp lý khi còn là cột; ở dạng thẻ thì về căn trái. */
+  .as-cards td.align-right {
+    text-align: left;
+  }
   /* Nhãn cột được gắn lại bằng data-label vì thead đã ẩn. */
-  .modal-body .admin-table td[data-label]::before {
+  .as-cards td[data-label]::before {
     content: attr(data-label);
     display: block;
     font-size: 11px;
