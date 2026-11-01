@@ -450,5 +450,10 @@ with `--draft --release-id ID`; a matching uploaded EXE is verified and reused,
 never overwritten. GitHub's `untagged-*` URLs are accepted only for drafts.
 Publication explicitly sets the version tag and rechecks the final asset URL,
 size and SHA-256 before advertising a download link.
-The Windows beta is unsigned and built under isolated Wine; native Windows
-capture/overlay has not been verified in this build.
+The Windows beta is unsigned and built under isolated Wine. Installer revision
+2 was subsequently installed on native Windows 11 Home build 26200 with an
+RTX 3050 Laptop GPU on 2026-11-01. Dependency/DPAPI checks, HTTPS/WSS and the
+strict-foreground DXGI fixture capture/overlay check passed. This used a
+temporary legacy test invitation, not account-based authorization. It does not
+verify live-game behavior, hybrid-GPU switching, WGC or production account
+integration. See `docs/desktop-native-0.1.5-r2-20261101.json` for the exact scope.
