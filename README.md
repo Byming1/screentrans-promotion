@@ -367,6 +367,15 @@ này phải nằm trong *URL Configuration → Redirect URLs* như mục trên.
 
 ## Desktop Account Integration (Beta 0.1.5)
 
+Deployment checkpoint, 2026-11-02: migration `desktop_account_access_005` was
+applied to the configured production project and recorded as version
+`20261101172722`. Its four private tables, RPC permissions, profile-role
+restrictions and rejection of an invalid session were verified. Existing
+business-table row counts were unchanged. Do not replay migration 005 on this
+project. Render deployment and live account sign-in/grant/revocation tests are
+still pending; this is not a public-launch approval. See
+`docs/desktop-deployment-20261102.json` for the checkpoint.
+
 The existing admin screen remains the owner of manual grants. It writes
 `subscriptions.user_id`, `plan_id`, `activated_at`, `expires_at`, `revoked_at`.
 The desktop app does not download or trust `activation_key_hash`: existing
