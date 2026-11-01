@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabase.js";
+import { bestSubscription, subscriptionStatus } from "../utils/subscriptionAccess.js";
 
 export const getSubscriptionPlans = async (req, res) => {
   try {
@@ -30,7 +31,9 @@ export const getSubscriptionPlans = async (req, res) => {
 
 export const getMySubscription = async (req, res) => {
   try {
-    const { data, error } = await req.supabase
+    const rows = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await req.supabase
       .from("subscriptions")
       .select(
         `
@@ -49,15 +52,14 @@ export const getMySubscription = async (req, res) => {
       `,
       )
       .eq("user_id", req.user.id)
-      .order("expires_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("id", { ascending: true })
+      .range(offset, offset + 999);
 
-    if (error) {
-      return res.status(500).json({
-        message: "Failed to fetch subscription",
-      });
+      if (error) return res.status(500).json({ message: "Failed to fetch subscription" });
+      rows.push(...data);
+      if (data.length < 1000) break;
     }
+    const data = bestSubscription(rows);
 
     if (!data) {
       return res.status(200).json({
@@ -66,15 +68,7 @@ export const getMySubscription = async (req, res) => {
       });
     }
 
-    const now = new Date();
-
-    const status = data.revoked_at
-      ? "revoked"
-      : now >= new Date(data.expires_at)
-        ? "expired"
-        : now < new Date(data.activated_at)
-          ? "pending"
-          : "active";
+    const status = subscriptionStatus(data);
 
     return res.status(200).json({
       status,

@@ -364,3 +364,86 @@ chỉ cần xác nhận ở địa chỉ mới.
 
 URL trong email xác nhận cũng trỏ về `<FRONTEND_URL>/auth/confirm`, nên đường dẫn
 này phải nằm trong *URL Configuration → Redirect URLs* như mục trên.
+
+## Desktop Account Integration (Beta 0.1.5)
+
+The existing admin screen remains the owner of manual grants. It writes
+`subscriptions.user_id`, `plan_id`, `activated_at`, `expires_at`, `revoked_at`.
+The desktop app does not download or trust `activation_key_hash`: existing
+ST-keys are kept for compatibility, not used as the new account credential.
+Supabase Auth UUID is the identity, so changing a display name/email does not
+move or lose a grant. No payment entry is fabricated for manual grants.
+
+### Runtime And Migration
+
+1. Back up the database and inspect the existing schema/policies first.
+   Apply **only** `backend/sql/005_desktop_access.sql` once, on the existing
+   schema that already has payments migrations 001-003. Do not replay the
+   sample-data script `004_randomize_last_sign_in.sql` on production.
+2. Deploy the backend on Node **22.23.4**, using `npm ci`. Keep the existing
+   Supabase and payment environment settings. The migration removes direct
+   client writes to subscriptions/payments and prevents profile role edits;
+   trusted backend operations still use the server-only Supabase secret key.
+3. Configure `DESKTOP_GATEWAY_SECRET` with a private, random shared credential
+   of at least 32 characters and `DESKTOP_ENABLED=true` on Render. Leave the
+   feature disabled until the migration and inference host are both ready.
+   `FRONTEND_URL` must be `https://screentrans-promotion.vercel.app` and must
+   match the desktop build. Never use a `VITE_*` variable for a secret.
+4. On the inference host, install the server integration archive after backing
+   up the replaced source files. Create `.secrets/account_authority.json` with
+   `api_url=https://screentrans-promotion.onrender.com/api` and the identical
+   `gateway_secret`; file mode must be **0600**. The supplied
+   `configure_account_authority.py --root /home/admin/screentrans` generates
+   this file without printing the credential and refuses to overwrite it.
+   Copy its credential to Render using a private administrative channel, not
+   chat, git, screenshots, logs or a Windows installer.
+5. Restart only Supervisor program `api`, using the existing `supervisord.conf`.
+   The updated `run_api.py` automatically selects the private authority config
+   if present. Do not restart the model or remove the legacy activation DB.
+
+### Sign-In And Enforcement
+
+- App requests `/api/desktop/device` and opens `/app/connect` in the system
+  browser. Existing email/password or Google sign-in is reused. The user
+  explicitly approves the device while signed in. The private device code
+  never enters the browser URL; only a short user code does.
+- `/api/desktop/token` exchanges approval once for a device-bound opaque app
+  session (30 days). Only a SHA-256 hash is stored in the database. Windows
+  persists the app credential through DPAPI, not plaintext/password storage.
+- The inference gateway calls `/api/desktop/authorize` before accepting work,
+  with both the app credential and a separate private gateway credential.
+  Account UUID, plan, expiry and quota are selected by SQL, not the client.
+  Authorization outages fail closed; legacy codes continue on their original
+  independent path. App logout revokes its account session.
+- Free currently has **50 manual scans/day**; Premium has automatic scans and
+  no daily scan cap, according to the published plan rows. A scan is an image
+  accepted for inference, even if OCR finds no text or inference later fails.
+  Invalid images do not consume quota. Daily counters use Vietnam time and
+  belong to the account across devices/sessions. Receipt IDs prevent a retry
+  of the same gateway reservation from being charged twice. Receipt history
+  is retained for two days; daily counters remain for usage accounting.
+- Grants, expiry and revocation are checked without an entitlement cache on
+  every submitted frame. An in-flight frame already accepted may finish.
+  App plan display refreshes every 30 seconds or on the refresh command.
+
+### Release Gate
+
+Before launch, verify on the deployed database/backend/inference host:
+email and Google sign-in, registration return path, approve/deny/expired code,
+Free quota across two sessions, manual admin grant, expiry/revocation/logout,
+HTTPS/WSS and native Windows capture/overlay. Local tests are not proof of
+production schema, network or native Windows behavior.
+
+`npm test` in `backend` runs SQL against PGlite/PostgreSQL and controller tests.
+It does not prove contention behavior on multiple production database
+connections; verify that before scaling. Existing frontend AuthContext has
+two pre-existing ESLint errors; the desktop-related changed frontend files
+are linted separately and production build is checked.
+
+Installer assets belong in GitHub Releases, not git history. The uploader
+`scripts/publish-desktop.mjs --draft /path/to/ScreenTransSetup-0.1.5-win64.exe`
+requires `GH_TOKEN` supplied privately and verifies installer and uploaded
+SHA-256/size. Draft mode does not enable the website download button. Publish
+and update `src/desktop-release.json` only after the live release gate passes.
+The Windows beta is unsigned and built under isolated Wine; native Windows
+capture/overlay has not been verified in this build.

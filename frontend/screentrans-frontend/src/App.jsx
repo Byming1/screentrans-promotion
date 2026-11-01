@@ -15,6 +15,7 @@ import Profile from './pages/Profile';
 import Checkout from './pages/Checkout';
 import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
+import AppConnect from './pages/AppConnect';
 
 // Trang quảng bá: có Header/Footer của người dùng thường.
 function SiteLayout() {
@@ -24,6 +25,7 @@ function SiteLayout() {
     <Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/>
     <Route path="/auth/confirm" element={<AuthConfirm/>}/>
     <Route path="/auth/callback" element={<AuthCallback/>}/>
+    <Route path="/app/connect" element={<AppConnect/>}/>
     <Route path="/profile" element={<ProtectedRoute><Profile/></ProtectedRoute>}/>
     <Route path="/checkout/:planCode" element={<ProtectedRoute><Checkout/></ProtectedRoute>}/>
     <Route path="*" element={<NotFound/>}/>

@@ -117,7 +117,7 @@ export default function AuthForm({ mode }) {
       {register && <label>Xác nhận mật khẩu<div className="input-wrap"><LockKeyhole size={18}/><input type="password" value={values.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" required minLength={8}/></div></label>}
       {error && <p className="form-message error" role="alert">{error}</p>}
       {needsConfirmation && <button className="btn btn-outline full" disabled={busy} type="button" onClick={handleResend}>Gửi lại email xác thực</button>}
-      {alreadyRegistered && <Link className="btn btn-outline full" to="/login">Đăng nhập ngay</Link>}
+      {alreadyRegistered && <Link className="btn btn-outline full" to="/login" state={location.state}>Đăng nhập ngay</Link>}
       {success && <p className="form-message success" role="status">{success}</p>}
       <button className="btn btn-primary full" disabled={busy} type="submit">{busy ? 'Đang xử lý...' : register ? 'Đăng ký' : 'Đăng nhập'}</button>
     </form>
@@ -125,6 +125,6 @@ export default function AuthForm({ mode }) {
     <button className="btn btn-outline full auth-google" disabled={busy} type="button" onClick={handleGoogleLogin}>
       <GoogleIcon /> {register ? 'Đăng ký với Google' : 'Đăng nhập với Google'}
     </button>
-    <p className="auth-alt">{register ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'} <Link to={register ? '/login' : '/register'}>{register ? 'Đăng nhập' : 'Đăng ký'}</Link></p>
+    <p className="auth-alt">{register ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'} <Link to={register ? '/login' : '/register'} state={location.state}>{register ? 'Đăng nhập' : 'Đăng ký'}</Link></p>
   </div></section>;
 }

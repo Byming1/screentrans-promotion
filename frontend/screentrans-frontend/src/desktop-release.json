@@ -1,0 +1,13 @@
+{
+  "version": "0.1.5",
+  "channel": "beta",
+  "published": false,
+  "url": null,
+  "bytes": 86171933,
+  "sha256": "3a4b8a801c2b37850d3de07a006b23dd04feadc0b8cb0c2bf14da4706da2fdc7",
+  "platform": "windows-x64",
+  "minimumWindowsBuild": 19041,
+  "signed": false,
+  "loginMode": "account",
+  "nativeWindowsTested": false
+}
