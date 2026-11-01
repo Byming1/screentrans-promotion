@@ -445,5 +445,10 @@ Installer assets belong in GitHub Releases, not git history. The uploader
 requires `GH_TOKEN` supplied privately and verifies installer and uploaded
 SHA-256/size. Draft mode does not enable the website download button. Publish
 and update `src/desktop-release.json` only after the live release gate passes.
+If an upload stops after creating a draft, inspect that release and resume
+with `--draft --release-id ID`; a matching uploaded EXE is verified and reused,
+never overwritten. GitHub's `untagged-*` URLs are accepted only for drafts.
+Publication explicitly sets the version tag and rechecks the final asset URL,
+size and SHA-256 before advertising a download link.
 The Windows beta is unsigned and built under isolated Wine; native Windows
 capture/overlay has not been verified in this build.
