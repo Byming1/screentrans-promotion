@@ -10,11 +10,45 @@ const messages = {
   plan_unavailable: "Chưa cấu hình gói sử dụng trên máy chủ.",
 };
 
-export function createDesktopController({ db, enabled, frontendUrl, gatewaySecret }) {
-  function available(req, res, next) {
+export function createDesktopController({ db, enabled, frontendUrl, gatewaySecret, now = Date.now }) {
+  const environmentConfigured = enabled !== undefined || gatewaySecret !== undefined;
+  let cachedConfiguration, configurationCached = false, configurationExpires = 0, configurationRequest;
+  const validOrigin = (value) => {
+    try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password && url.origin === value; }
+    catch { return false; }
+  };
+  async function configuration() {
+    if (environmentConfigured) {
+      if ((enabled !== true && enabled !== "true") || !gatewaySecret || gatewaySecret.length < 32 || !validOrigin(frontendUrl)) return null;
+      return { frontendUrl, gatewayHash: hash(gatewaySecret) };
+    }
+    if (configurationCached && now() < configurationExpires) return cachedConfiguration;
+    if (!configurationRequest) {
+      configurationRequest = (async () => {
+        const { data, error } = await db.from("desktop_server_config")
+          .select("enabled, gateway_key_hash, frontend_url").eq("id", true).maybeSingle();
+        if (error) throw new Error("desktop_configuration_unavailable", { cause: error });
+        cachedConfiguration = data?.enabled && /^[a-f0-9]{64}$/.test(data.gateway_key_hash || "") && validOrigin(data.frontend_url)
+          ? { frontendUrl: data.frontend_url, gatewayHash: data.gateway_key_hash } : null;
+        configurationCached = true;
+        configurationExpires = now() + 5000;
+        return cachedConfiguration;
+      })();
+    }
+    try { return await configurationRequest; }
+    finally { configurationRequest = null; }
+  }
+  async function available(req, res, next) {
     res.set("Cache-Control", "no-store");
-    if (!enabled || !db || !frontendUrl || !gatewaySecret || gatewaySecret.length < 32) return res.status(503).json({ code: "desktop_not_configured", message: "Đăng nhập app chưa được cấu hình trên máy chủ." });
-    next();
+    if (!db) return res.status(503).json({ code: "desktop_database_not_configured", message: "Chưa cấu hình quyền backend truy cập database." });
+    try {
+      req.desktopConfiguration = await configuration();
+      if (!req.desktopConfiguration) return res.status(503).json({ code: "desktop_not_configured", message: "Đăng nhập app chưa được cấu hình trên máy chủ." });
+      next();
+    } catch (error) {
+      console.error("Desktop configuration failure:", error.cause?.code || error.message);
+      return res.status(503).json({ code: "desktop_service_unavailable", message: "Không đọc được cấu hình app. Vui lòng thử lại sau." });
+    }
   }
   function sessionHeaders(req) {
     const token = req.get("Authorization")?.replace(/^Bearer /, "");
@@ -58,7 +92,8 @@ export function createDesktopController({ db, enabled, frontendUrl, gatewaySecre
         device_hash: hash(secret), user_code: code, device_id: device, device_name: name.trim(),
       });
       if (error) throw new Error("desktop_start_failed", { cause: error });
-      const uri = new URL("/app/connect", frontendUrl).href;
+      const config = req.desktopConfiguration || await configuration();
+      const uri = new URL("/app/connect", config.frontendUrl).href;
       return res.status(201).json({ device_code: secret, user_code: code,
         verification_uri: uri, verification_uri_complete: `${uri}?user_code=${code}`,
         expires_in: 600, interval: 5 });
@@ -110,9 +145,10 @@ export function createDesktopController({ db, enabled, frontendUrl, gatewaySecre
       return res.json({ status: "signed_out" });
     }),
     authorize: guarded(async (req, res) => {
-      const provided = Buffer.from(req.get("X-ScreenTrans-Gateway") || "");
-      const expected = Buffer.from(gatewaySecret || "");
-      if (expected.length < 32 || provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+      const config = req.desktopConfiguration || await configuration();
+      const provided = req.get("X-ScreenTrans-Gateway") || "";
+      const expected = Buffer.from(config?.gatewayHash || "", "hex");
+      if (provided.length < 32 || provided.length > 512 || expected.length !== 32 || !timingSafeEqual(Buffer.from(hash(provided), "hex"), expected)) {
         return res.status(401).json({ message: "Gateway authentication required" });
       }
       const credentials = sessionHeaders(req);

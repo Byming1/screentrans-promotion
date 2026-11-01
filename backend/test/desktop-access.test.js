@@ -34,6 +34,7 @@ before(async () => {
     create policy own_profile on profiles for all to authenticated using (id = auth.uid()) with check (id = auth.uid());
   `);
   await db.exec(await readFile(new URL("../sql/005_desktop_access.sql", import.meta.url), "utf8"));
+  await db.exec(await readFile(new URL("../sql/006_desktop_server_config.sql", import.meta.url), "utf8"));
 });
 after(async () => { await db?.close(); });
 beforeEach(async () => {
@@ -59,6 +60,18 @@ test("migration removes public access to privileged RPCs and account tables", as
     }
     assert.equal((await db.query("select has_table_privilege($1,'desktop_sessions','select') as ok", [role])).rows[0].ok, false);
   }
+});
+
+test("gateway configuration is private, disabled by default, and backend cannot alter it", async () => {
+  const config = (await db.query("select * from desktop_server_config")).rows[0];
+  assert.equal(config.enabled, false);
+  assert.equal(config.gateway_key_hash, null);
+  for (const role of ["anon", "authenticated"]) {
+    assert.equal((await db.query("select has_table_privilege($1,'desktop_server_config','select') as ok", [role])).rows[0].ok, false);
+  }
+  assert.equal((await db.query("select has_table_privilege('service_role','desktop_server_config','select') as ok")).rows[0].ok, true);
+  assert.equal((await db.query("select has_table_privilege('service_role','desktop_server_config','update') as ok")).rows[0].ok, false);
+  await assert.rejects(db.query("update desktop_server_config set enabled=true"), /check constraint/);
 });
 
 test("only the approved device can exchange once; pending does not create a session", async () => {

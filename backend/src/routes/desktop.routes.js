@@ -5,7 +5,7 @@ import { requireAuth } from "../middlewares/auth.middleware.js";
 import { createDesktopController } from "../controllers/desktop.controller.js";
 
 const controller = createDesktopController({
-  db: supabaseAdmin, enabled: process.env.DESKTOP_ENABLED === "true",
+  db: supabaseAdmin, enabled: process.env.DESKTOP_ENABLED,
   frontendUrl: process.env.FRONTEND_URL, gatewaySecret: process.env.DESKTOP_GATEWAY_SECRET,
 });
 const router = Router();
@@ -20,6 +20,6 @@ router.get("/request", limiter(30), requireAuth, controller.request);
 router.post("/approve", limiter(15), requireAuth, controller.approve);
 router.get("/session", limiter(60), controller.session);
 router.post("/logout", limiter(30), controller.logout);
-// A private shared credential is mandatory; never expose it through VITE_* or the EXE.
+// A private shared credential is mandatory; its hash can be held in server-only DB config.
 router.post("/authorize", controller.authorize);
 export default router;

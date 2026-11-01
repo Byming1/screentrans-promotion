@@ -393,19 +393,27 @@ move or lose a grant. No payment entry is fabricated for manual grants.
    Supabase and payment environment settings. The migration removes direct
    client writes to subscriptions/payments and prevents profile role edits;
    trusted backend operations still use the server-only Supabase secret key.
-3. Configure `DESKTOP_GATEWAY_SECRET` with a private, random shared credential
-   of at least 32 characters and `DESKTOP_ENABLED=true` on Render. Leave the
-   feature disabled until the migration and inference host are both ready.
-   `FRONTEND_URL` must be `https://screentrans-promotion.vercel.app` and must
-   match the desktop build. Never use a `VITE_*` variable for a secret.
+3. Apply `backend/sql/006_desktop_server_config.sql` once. It creates a disabled,
+   server-only configuration row. An operator with database administration
+   rights sets its `gateway_key_hash` to SHA-256 of the private A30 credential
+   and enables it only after the inference host is ready. Render's existing
+   service-role connection can only read this table; browsers cannot access it.
+   This lets Git auto-deploy work without putting a gateway secret in Git or
+   requiring a new Render environment variable. Server configuration is cached
+   for at most five seconds; account grants and quotas are never cached.
+   Existing explicit `DESKTOP_ENABLED`/`DESKTOP_GATEWAY_SECRET` environment
+   configuration takes precedence and must be complete; an explicit disable
+   or configuration error never falls back to the database. Keep the frontend
+   URL equal to `https://screentrans-promotion.vercel.app` for this desktop build.
 4. On the inference host, install the server integration archive after backing
    up the replaced source files. Create `.secrets/account_authority.json` with
    `api_url=https://screentrans-promotion.onrender.com/api` and the identical
    `gateway_secret`; file mode must be **0600**. The supplied
    `configure_account_authority.py --root /home/admin/screentrans` generates
    this file without printing the credential and refuses to overwrite it.
-   Copy its credential to Render using a private administrative channel, not
-   chat, git, screenshots, logs or a Windows installer.
+   Store only its hash in `desktop_server_config`, or configure Render through
+   a private administrative channel. Never put the credential in chat, Git,
+   screenshots, logs or a Windows installer.
 5. Restart only Supervisor program `api`, using the existing `supervisord.conf`.
    The updated `run_api.py` automatically selects the private authority config
    if present. Do not restart the model or remove the legacy activation DB.
