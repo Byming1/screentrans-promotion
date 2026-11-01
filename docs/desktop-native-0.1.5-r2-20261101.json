@@ -53,6 +53,49 @@
     "capture_to_result_seconds": 0.727131499996176,
     "blank_to_clear_seconds": 0.25064889999339357
   },
+  "failed_qualification_checks": {
+    "wgc": {
+      "passed": false,
+      "initialization_and_fixture_capture_worked": true,
+      "checks_passed": 10,
+      "checks_total": 11,
+      "failed_check": "real_wgc_overlay_visible",
+      "visual_overlay_changed_pixel_ratio": 0.0,
+      "probe_image_identical_to_original_capture": true,
+      "capture_mean_seconds": 0.002404988460721842,
+      "root_cause": "Unconfirmed; stale probe frame is a hypothesis, not a verified diagnosis"
+    },
+    "color_fixture": {
+      "passed": false,
+      "reference_guard_rejected_frame": true,
+      "not_sent_to_ocr": true,
+      "numeric_probe_samples": 3,
+      "mean_absolute_difference_0_to_255": 25.64685696583466,
+      "bgr_mean_absolute_difference_0_to_255": 29.602612851832184,
+      "channel_bias_rgb": [29.142573021773764, 24.954503451938397, 22.843430695698352],
+      "root_cause": "Unconfirmed; observed brighter values are not explained by swapping RGB/BGR"
+    }
+  },
+  "independent_wgc_diagnostic": {
+    "conclusive": false,
+    "gui_exit_code": 1,
+    "gui_error": "Interactive fixture exceeded 60 seconds",
+    "limitations": [
+      "Independent DXGI observation is not a passing native WGC test",
+      "The initial diagnostic did not explicitly reject a missing client rectangle before grab; no captured image was saved or transmitted",
+      "The initial diagnostic returned zero despite the GUI failure; later code propagates failure",
+      "Diagnostic guards and exit propagation were corrected but the independent diagnostic was not rerun"
+    ]
+  },
+  "cleanup": {
+    "temporary_test_client_revoked": true,
+    "temporary_invitation_removed": true,
+    "temporary_windows_credential_removed": true,
+    "owned_scheduled_tasks_removed": 6,
+    "other_client_licenses_unchanged": true,
+    "previous_install_backup_retained": true,
+    "inference_server_left_active": true
+  },
   "not_verified": [
     "Native WGC capture/overlay",
     "Color capture fidelity",
@@ -65,6 +108,8 @@
   "release_remains_draft": true,
   "diagnostic_issues": [
     "quser is unavailable on Windows Home; user approved CIM and interactive scheduled-task diagnostics",
-    "SCP directory-dot download was rejected; additional evidence transfer and WGC/color tests await user approval"
+    "SCP directory-dot download was rejected; explicit-file downloads succeeded after user approval",
+    "The old SDK lacks PySide6; frozen installer dependency checks passed, numeric probes used its existing Python/DXcam only",
+    "The color guard reports a capture error but the current GUI harness waits for its 60-second timeout instead of ending immediately"
   ]
 }

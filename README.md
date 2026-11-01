@@ -455,5 +455,9 @@ The Windows beta is unsigned and built under isolated Wine. Installer revision
 RTX 3050 Laptop GPU on 2026-11-01. Dependency/DPAPI checks, HTTPS/WSS and the
 strict-foreground DXGI fixture capture/overlay check passed. This used a
 temporary legacy test invitation, not account-based authorization. It does not
-verify live-game behavior, hybrid-GPU switching, WGC or production account
-integration. See `docs/desktop-native-0.1.5-r2-20261101.json` for the exact scope.
+verify live-game behavior, hybrid-GPU switching or production account
+integration. Follow-up WGC pixel verification failed, and the color fixture was
+rejected by the reference guard (mean absolute difference 25.65/255). These
+are unresolved qualification failures, not proof of their root causes. The
+candidate remains a draft. See `docs/desktop-native-0.1.5-r2-20261101.json`
+for the exact scope, failed checks and diagnostic limitations.
