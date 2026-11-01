@@ -30,7 +30,9 @@ scripts/seeded-users.csv
 # Script seed/vá tài khoản: thao tác trực tiếp lên auth.users bằng secret key
 # và gắn chặt với dữ liệu cá nhân trong file lớp, nên giữ ở máy chứ không đẩy
 # lên repo.
-scripts/
+scripts/*
+!scripts/publish-desktop.mjs
+!scripts/publish-desktop.test.mjs
 
 # Misc
 .DS_Store

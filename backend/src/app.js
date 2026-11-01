@@ -5,6 +5,7 @@ import subscriptionRoutes from "./routes/subscription.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+import desktopRoutes from "./routes/desktop.routes.js";
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/admin", adminRoutes);
 
 app.use("/api/payments", paymentRoutes);
+app.use("/api/desktop", desktopRoutes);
 
 // 404
 app.use((req, res) => {

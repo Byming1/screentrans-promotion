@@ -2,9 +2,11 @@
   "name": "exe-promotion-backend",
   "version": "1.0.0",
   "type": "module",
+  "engines": { "node": ">=22.23.4 <23" },
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +21,7 @@
     "helmet": "^8.3.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.14",
     "nodemon": "^3.1.14"
   }
 }

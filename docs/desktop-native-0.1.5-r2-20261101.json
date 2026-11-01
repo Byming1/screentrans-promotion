@@ -1,0 +1,115 @@
+{
+  "version": "0.1.5-r2",
+  "tested_date": "2026-11-01",
+  "installer_sha256": "d20dd8d7c14d95791fbac0ab990a16a390396d6a0bf343666b839812e78c7924",
+  "installed_exe_sha256": "38ec2585179475073b8011d0e179e7ac754617dc1934f267f9114ca7766ffd52",
+  "environment": {
+    "os": "Windows 11 Home",
+    "build": "26200",
+    "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+    "driver": "32.0.15.8180",
+    "interactive_desktop": true
+  },
+  "installer": {
+    "exit_code": 0,
+    "old_install_backed_up": true,
+    "isolated_test_data": true,
+    "rollback_execution_tested": false,
+    "dependency_and_dpapi_checks_passed": true
+  },
+  "network": {
+    "server_model": "hymt",
+    "authorization": "Temporary legacy test invitation; not website account authorization",
+    "tls_verification": true,
+    "anonymous_rejected": true,
+    "http_requests_passed": 2,
+    "wss_requests_passed": 2,
+    "http_mean_seconds": 0.9109432499972172,
+    "wss_mean_seconds": 0.7967149000032805,
+    "scope": "Explicit static fixture; small smoke-test sample, not a performance benchmark"
+  },
+  "capture_overlay": {
+    "fixture": "Owned monochrome static game image, 1076x700",
+    "strict_foreground": true,
+    "backend": "dxgi",
+    "fallback_used": false,
+    "checks_passed": 11,
+    "checks": [
+      "requested_capture_backend_selected",
+      "capture_nonblank",
+      "translations_rendered",
+      "real_dda_overlay_visible",
+      "overlay_excluded_from_ocr_capture",
+      "overlay_hidden_on_focus_loss",
+      "overlay_restored_on_focus_return",
+      "small_scroll_reuses_translation",
+      "old_overlay_removed",
+      "old_overlay_removed_under_500ms",
+      "revision_advanced"
+    ],
+    "capture_sample_count": 22,
+    "capture_mean_seconds": 0.00215621818179815,
+    "capture_p95_seconds": 0.003176759989582933,
+    "capture_to_result_seconds": 0.727131499996176,
+    "blank_to_clear_seconds": 0.25064889999339357
+  },
+  "failed_qualification_checks": {
+    "wgc": {
+      "passed": false,
+      "initialization_and_fixture_capture_worked": true,
+      "checks_passed": 10,
+      "checks_total": 11,
+      "failed_check": "real_wgc_overlay_visible",
+      "visual_overlay_changed_pixel_ratio": 0.0,
+      "probe_image_identical_to_original_capture": true,
+      "capture_mean_seconds": 0.002404988460721842,
+      "root_cause": "Unconfirmed; stale probe frame is a hypothesis, not a verified diagnosis"
+    },
+    "color_fixture": {
+      "passed": false,
+      "reference_guard_rejected_frame": true,
+      "not_sent_to_ocr": true,
+      "numeric_probe_samples": 3,
+      "mean_absolute_difference_0_to_255": 25.64685696583466,
+      "bgr_mean_absolute_difference_0_to_255": 29.602612851832184,
+      "channel_bias_rgb": [29.142573021773764, 24.954503451938397, 22.843430695698352],
+      "root_cause": "Unconfirmed; observed brighter values are not explained by swapping RGB/BGR"
+    }
+  },
+  "independent_wgc_diagnostic": {
+    "conclusive": false,
+    "gui_exit_code": 1,
+    "gui_error": "Interactive fixture exceeded 60 seconds",
+    "limitations": [
+      "Independent DXGI observation is not a passing native WGC test",
+      "The initial diagnostic did not explicitly reject a missing client rectangle before grab; no captured image was saved or transmitted",
+      "The initial diagnostic returned zero despite the GUI failure; later code propagates failure",
+      "Diagnostic guards and exit propagation were corrected but the independent diagnostic was not rerun"
+    ]
+  },
+  "cleanup": {
+    "temporary_test_client_revoked": true,
+    "temporary_invitation_removed": true,
+    "temporary_windows_credential_removed": true,
+    "owned_scheduled_tasks_removed": 6,
+    "other_client_licenses_unchanged": true,
+    "previous_install_backup_retained": true,
+    "inference_server_left_active": true
+  },
+  "not_verified": [
+    "Native WGC capture/overlay",
+    "Color capture fidelity",
+    "Live games and exclusive fullscreen",
+    "Hybrid-GPU switching and driver reset recovery",
+    "Translation accuracy",
+    "Production website login, admin grants, expiry, revocation and quota enforcement"
+  ],
+  "production_account_device_endpoint_status": 404,
+  "release_remains_draft": true,
+  "diagnostic_issues": [
+    "quser is unavailable on Windows Home; user approved CIM and interactive scheduled-task diagnostics",
+    "SCP directory-dot download was rejected; explicit-file downloads succeeded after user approval",
+    "The old SDK lacks PySide6; frozen installer dependency checks passed, numeric probes used its existing Python/DXcam only",
+    "The color guard reports a capture error but the current GUI harness waits for its 60-second timeout instead of ending immediately"
+  ]
+}

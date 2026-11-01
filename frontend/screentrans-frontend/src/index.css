@@ -708,6 +708,26 @@ button:disabled {
   color: #6c869a;
   line-height: 1.7;
 }
+
+.download-checksum code {
+  overflow-wrap: anywhere;
+}
+
+.desktop-device-code {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 8px 0 16px;
+  padding: 12px;
+  border: 1px solid #cadce5;
+  border-radius: 6px;
+  font: inherit;
+  text-transform: uppercase;
+}
+
+.download-wrap .btn {
+  margin: 0 0.5rem 0.75rem 0;
+}
 .notice {
   display: flex;
   gap: 9px;

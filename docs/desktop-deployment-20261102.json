@@ -1,0 +1,46 @@
+{
+  "checked_date": "2026-11-02",
+  "database": {
+    "connection": "Project-scoped Supabase MCP through the existing Codex OAuth login",
+    "migration_name": "desktop_account_access_005",
+    "migration_version": "20261101172722",
+    "migration_sha256": "b0010c5111524da85bbcdd00db3a7e562800a6c878d4a798cf4e82a3574de042",
+    "applied": true,
+    "metadata_backup_saved_privately": true,
+    "metadata_backup_mode": "0600",
+    "full_database_backup_claimed": false,
+    "existing_business_table_counts_unchanged": true,
+    "existing_subscriptions_rewritten": false,
+    "payment_records_created": false,
+    "private_tables_with_rls_verified": 4,
+    "service_only_rpc_permissions_verified": 4,
+    "profile_role_escalation_denied": true,
+    "direct_paid_table_writes_denied": true,
+    "invalid_session_rejected": true,
+    "temporary_accounts_or_sessions_created": false,
+    "verified_seed_plan_codes": ["FREE", "PREMIUM_MONTHLY", "PREMIUM_YEARLY"],
+    "preexisting_signup_trigger_changed": false,
+    "security_advisors": {
+      "server_only_table_no_policy_info_expected": 4,
+      "preexisting_auth_warnings_still_require_review": true,
+      "auth_settings_changed": false
+    }
+  },
+  "local_tests": {
+    "backend_passed": 17,
+    "codex_mcp_client_passed": 10
+  },
+  "remaining_work": {
+    "render_management_access_verified": false,
+    "backend_device_endpoint_last_status": 404,
+    "inference_account_authority_activated_by_this_run": false,
+    "production_account_login_grants_revocation_quotas_tested": false,
+    "native_windows_qualification": "See desktop-native-0.1.5-r2-20261101.json; WGC/color checks remain unresolved",
+    "installer_release_remains_draft": true
+  },
+  "inference_server": {
+    "health_checked": true,
+    "translator": "hymt",
+    "left_active": true
+  }
+}
