@@ -16,6 +16,19 @@ const currency = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
+// Phần trăm tiết kiệm của gói dài hạn so với trả theo tháng. Tính từ giá thật
+// trong database chứ không ghi cứng, để đổi giá trong Supabase là con số này
+// tự đúng theo.
+function savingsPercent(plan, monthlyPlan) {
+  if (!monthlyPlan?.price_vnd || !plan.price_vnd) return null;
+  if (plan.duration_unit !== "year" || !plan.duration_value) return null;
+
+  const fullPrice = monthlyPlan.price_vnd * 12 * plan.duration_value;
+  if (fullPrice <= plan.price_vnd) return null;
+
+  return Math.round((1 - plan.price_vnd / fullPrice) * 100);
+}
+
 export default function Pricing() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +53,20 @@ export default function Pricing() {
       active = false;
     };
   }, []);
+
+  // Mốc để tính tiết kiệm: gói trả phí ngắn nhất theo tháng.
+  const monthlyPlan = plans.find(
+    (plan) => plan.duration_unit === "month" && plan.price_vnd > 0,
+  );
+
+  // Gói được làm nổi bật là gói trả phí đắt nhất (dài hạn nhất) — không ghi
+  // cứng mã gói để bảng giá tự đúng khi số gói thay đổi.
+  const featuredCode = plans
+    .filter((plan) => plan.price_vnd > 0)
+    .reduce(
+      (best, plan) => (!best || plan.price_vnd > best.price_vnd ? plan : best),
+      null,
+    )?.code;
 
   return (
     <>
@@ -66,28 +93,44 @@ export default function Pricing() {
           <div className="pricing-grid">
             {plans.map((plan) => {
               const features = normalizeFeatures(plan.features);
+              const savings = savingsPercent(plan, monthlyPlan);
               return (
-                <article className="pricing-card" key={plan.id}>
+                <article
+                  className={
+                    plan.code === featuredCode
+                      ? "pricing-card featured"
+                      : "pricing-card"
+                  }
+                  key={plan.id}
+                >
+                  {plan.code === featuredCode && (
+                    <span className="popular">PHỔ BIẾN</span>
+                  )}
                   <span className="price-name">{plan.name}</span>
                   <h2>
                     {currency.format(plan.price_vnd || 0)}{" "}
                     <small>/ {formatDuration(plan)}</small>
                   </h2>
+                  {savings != null && (
+                    <span className="price-badge">Tiết kiệm {savings}%</span>
+                  )}
                   <div className="price-line" />
-                  <div className="price-feature">
-                    <Check size={17} />
-                    {formatScanLimit(plan.daily_scan_limit)}
-                  </div>
-                  {features.map((f, i) => (
-                    <div
-                      className="price-feature"
-                      key={i}
-                      style={f.enabled ? undefined : { opacity: 0.5 }}
-                    >
-                      {f.enabled ? <Check size={17} /> : <X size={17} />}
-                      {f.label}
+                  <div className="price-features">
+                    <div className="price-feature">
+                      <Check size={17} />
+                      {formatScanLimit(plan.daily_scan_limit)}
                     </div>
-                  ))}
+                    {features.map((f, i) => (
+                      <div
+                        className="price-feature"
+                        key={i}
+                        style={f.enabled ? undefined : { opacity: 0.5 }}
+                      >
+                        {f.enabled ? <Check size={17} /> : <X size={17} />}
+                        {f.label}
+                      </div>
+                    ))}
+                  </div>
                   {authLoading ? (
                     <button className="btn btn-outline full" disabled>
                       Đang kiểm tra tài khoản...

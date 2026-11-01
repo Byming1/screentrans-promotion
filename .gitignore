@@ -27,6 +27,11 @@ scripts/seeded-users.csv
 # Danh sách lớp: dữ liệu cá nhân của sinh viên
 *.xlsx
 
+# Script seed/vá tài khoản: thao tác trực tiếp lên auth.users bằng secret key
+# và gắn chặt với dữ liệu cá nhân trong file lớp, nên giữ ở máy chứ không đẩy
+# lên repo.
+scripts/
+
 # Misc
 .DS_Store
 

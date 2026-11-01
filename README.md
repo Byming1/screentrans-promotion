@@ -177,8 +177,31 @@ Mã đơn `ST...` vẫn được quét trước, nên các đơn tạo theo cơ 
 
 ## Cấu hình trang quản trị
 
-Trang `/admin` hiển thị số người đăng ký, số gói tháng và gói năm **đang còn
-hạn**. Cần hai bước:
+Trang `/admin` gồm bốn phần:
+
+- **Hàng thẻ số liệu** — số người đăng ký, số gói tháng và gói năm **đang còn
+  hạn**, và tổng doanh thu.
+- **Bảng người dùng gói tháng** và **bảng người dùng gói năm** — ai đang còn
+  hạn, sắp hết hạn xếp lên trên để tiện nhắc gia hạn (dưới 7 ngày được tô màu
+  cảnh báo).
+- **Bảng danh sách người dùng** — toàn bộ tài khoản, có ô tìm theo email/tên và
+  lọc theo gói. **Bấm vào một dòng** để mở hộp thoại chi tiết: toàn bộ gói của
+  người đó (kể cả đã hết hạn / thu hồi) với trạng thái, ngày kích hoạt, ngày
+  hết hạn và activation key — key sửa được tại chỗ.
+
+Về việc sửa key: cột trong database tên là `activation_key_hash` nhưng thực tế
+lưu **key dạng thô** (app desktop đọc thẳng), nên trang quản trị hiện nguyên
+văn và ghi đè nguyên văn. Key được `trim()` trước khi ghi vì vài dòng cũ đang
+dính `\r\n` ở cuối do dán từ email, và `key_last4` được cập nhật theo key mới.
+
+Ngày kích hoạt / hết hạn **cố ý không cho sửa**: chúng do luồng thanh toán tính
+ra từ bảng `payments`, sửa tay sẽ làm hai bảng lệch nhau.
+
+Doanh thu được cộng từ bảng `payments` (tiền thực nhận), không nhân ngược từ
+giá gói đang còn hạn: giá trong `subscription_plans` có thể đã bị sửa sau khi
+người dùng trả tiền.
+
+Cần hai bước để dùng được trang này:
 
 1. **Thêm secret key vào `backend/.env`.** Supabase Dashboard → Project
    Settings → API keys → copy `service_role` (hoặc `Secret key`):
@@ -206,6 +229,70 @@ hạn**. Cần hai bước:
 
 Số người đăng ký được đếm từ `auth.users` (không phải `profiles`) để không bỏ
 sót tài khoản đã đăng ký mà chưa đăng nhập lần nào.
+
+## Tạo tài khoản mẫu hàng loạt
+
+```bash
+python -I -X utf8 scripts/seed_users_admin.py "DS-học-EXE201-kỳ-SU26 (1).xlsx" 200 [--dry-run]
+```
+
+Đọc danh sách lớp trong file `.xlsx`, tạo tài khoản qua **Admin API** của
+Supabase (`POST /auth/v1/admin/users`, cần `SUPABASE_SECRET_KEY`). Mật khẩu
+ngẫu nhiên của từng tài khoản được ghi vào `scripts/seeded-users.csv` — file
+này đã nằm trong `.gitignore`, **đừng commit**.
+
+Vì sao không dùng `scripts/seed_users.py` (bản cũ, gọi signup công khai):
+
+- Signup công khai **gửi mail xác thực** nên dính quota của Supabase — lần chạy
+  trước chết giữa chừng với `email rate limit exceeded`, chỉ tạo được 8/21 tài
+  khoản. Admin API không gửi mail nên không có giới hạn này.
+- Admin API đặt được `email_confirm: true`, tài khoản **xác thực sẵn** và đăng
+  nhập được ngay, không cần ai bấm link trong mail.
+
+Script đổi mọi email sang đuôi `@gmail.com` (giữ nguyên phần trước `@`). Vì
+không có mail nào được gửi đi, các địa chỉ này chỉ là khoá định danh trong
+database chứ không làm phiền hộp thư của ai.
+
+Trước khi tạo, script đọc toàn bộ `auth.users` và bỏ qua email đã tồn tại, nên
+chạy lại nhiều lần không sinh bản ghi trùng. Dùng `--dry-run` để xem trước danh
+sách mà không gọi API.
+
+### Vá email cho tài khoản đã tạo
+
+```bash
+python -I -X utf8 scripts/fix_user_emails.py "DS-học-EXE201-kỳ-SU26 (1).xlsx" [--dry-run] [--rename]
+```
+
+**Tài khoản tạo bằng Admin API luôn có `profiles.email = NULL`** — phải chạy
+script này sau mỗi lần seed, nếu không cột email ở trang quản trị bị trống.
+
+Nguyên nhân nằm trong trigger `on_auth_user_created` (định nghĩa trong
+Dashboard, không có trong repo): nó chỉ điền `profiles.email` cho luồng signup
+công khai. Thêm `email` vào `user_metadata` lúc tạo **không giải quyết được** —
+đã thử trên lứa 100 tài khoản ngày 01/11/2026: metadata có đủ email mà
+`profiles.email` vẫn NULL cả 100 dòng. Muốn sửa tận gốc thì phải sửa trigger
+trong SQL Editor; trước khi làm được việc đó, cách chắc chắn là chạy script này
+sau khi seed.
+
+**`--rename` đổi cả email trong `auth.users`, mặc định tắt.** Email là danh
+tính đăng nhập: đổi email của một người đang dùng thật sẽ làm họ mất đường vào,
+nhất là tài khoản Google (danh tính gắn với địa chỉ bên Google). Không có cờ
+này thì script chỉ vá dữ liệu hiển thị, không đụng vào đăng nhập của ai.
+
+Script không bao giờ xoá tài khoản. Địa chỉ gmail đích đã có người dùng thì chỉ
+được liệt kê ra để xử lý riêng — `auth.users.email` là UNIQUE nên không thể có
+hai tài khoản cùng địa chỉ.
+
+**17 tài khoản đuôi `@fpt.edu.vn` được giữ nguyên, có chủ đích** — đừng chạy
+`--rename` để "dọn" chúng:
+
+- 15 tài khoản đã có bản sao đuôi gmail (cùng người, sinh ra từ cùng dòng trong
+  file lớp). Đổi đuôi sẽ đụng ràng buộc UNIQUE, muốn đổi thì phải xoá một
+  trong hai.
+- 2 tài khoản còn lại là **người dùng thật đã đăng nhập**, không phải dữ liệu
+  mẫu. Email là danh tính đăng nhập nên đổi sẽ làm họ mất đường vào — một
+  trong hai đăng nhập bằng Google thì chắc chắn hỏng. Chạy script với
+  `--dry-run` sẽ liệt kê ra cụ thể là tài khoản nào.
 
 ## Cấu hình đăng nhập Google
 

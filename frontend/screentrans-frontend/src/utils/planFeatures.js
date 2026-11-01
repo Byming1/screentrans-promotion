@@ -1,15 +1,29 @@
 // Chuẩn hoá cột `features` (jsonb) của subscription_plans thành danh sách hiển thị.
 // Hỗ trợ: mảng chuỗi, mảng object {label|name|title}, object {key: true|false|number|string}, hoặc chuỗi JSON.
 
-// Thêm key -> nhãn tiếng Việt cho các feature của bạn ở đây.
+// Thêm key -> nhãn tiếng Việt cho các feature của bạn ở đây. Key nào không có
+// trong bảng này sẽ bị humanize() hiện nguyên dạng tiếng Anh, nên khi thêm
+// feature mới trong Supabase hãy khai báo nhãn ở đây luôn.
 const FEATURE_LABELS = {
   ocr: "Nhận dạng văn bản (OCR)",
   translate: "Dịch văn bản trên màn hình",
   history: "Lưu lịch sử dịch",
   no_ads: "Không quảng cáo",
+  ads_free: "Không quảng cáo",
   priority_support: "Hỗ trợ ưu tiên",
   offline: "Dùng ngoại tuyến",
   multi_language: "Đa ngôn ngữ",
+  standard_overlay: "Lớp phủ dịch tiêu chuẩn",
+  advanced_overlay: "Lớp phủ dịch nâng cao",
+  auto_full_screen_scan: "Tự động quét toàn màn hình",
+};
+
+// `support` có giá trị dạng chuỗi ("general", "priority"...) chứ không phải
+// bật/tắt, nên cần nhãn riêng cho từng giá trị thay vì "Support: general".
+const SUPPORT_LABELS = {
+  general: "Hỗ trợ tiêu chuẩn",
+  priority: "Hỗ trợ ưu tiên",
+  vip: "Hỗ trợ VIP",
 };
 
 const humanize = (key) => {
@@ -46,6 +60,8 @@ export function normalizeFeatures(raw) {
   if (typeof value === "object") {
     return Object.entries(value).map(([key, val]) => {
       const name = FEATURE_LABELS[key] || humanize(key);
+      if (key === "support" && typeof val === "string")
+        return { label: SUPPORT_LABELS[val] || humanize(val), enabled: true };
       if (val === true) return { label: name, enabled: true };
       if (val === false || val == null) return { label: name, enabled: false };
       if (typeof val === "number")
