@@ -184,10 +184,20 @@ Trang `/admin` gồm bốn phần:
 - **Bảng người dùng gói tháng** và **bảng người dùng gói năm** — ai đang còn
   hạn, sắp hết hạn xếp lên trên để tiện nhắc gia hạn (dưới 7 ngày được tô màu
   cảnh báo). Bấm một dòng để mở hộp thoại chi tiết, xem và sửa key ngay.
-- **Bảng danh sách người dùng** — toàn bộ tài khoản, có ô tìm theo email/tên và
-  lọc theo gói. **Bấm vào một dòng** để mở hộp thoại chi tiết: toàn bộ gói của
-  người đó (kể cả đã hết hạn / thu hồi) với trạng thái, ngày kích hoạt, ngày
-  hết hạn và activation key — key sửa được tại chỗ.
+- **Bảng danh sách người dùng** — toàn bộ tài khoản, chia trang 25 dòng, có ô
+  tìm theo email/tên và lọc theo gói. **Bấm vào một dòng** để mở hộp thoại chi
+  tiết: toàn bộ gói của người đó (kể cả đã hết hạn / thu hồi) với trạng thái,
+  ngày kích hoạt, ngày hết hạn và activation key — key sửa được tại chỗ.
+
+Phân trang làm ở **client**, không phải ở API: hai bảng gói tháng/năm và ô tìm
+kiếm đều cần toàn bộ danh sách, nên vẫn phải tải hết một lần (341 người ≈ 121KB,
+~230ms — chưa đáng để tách endpoint). Thứ thực sự làm chậm là số dòng đem
+render, và phân trang client đã xử lý: DOM giữ nguyên ~450 node dù có 341 hay
+2000 người dùng. Đổi trang không gọi lại API.
+
+Khi nào nên chuyển sang phân trang phía server: lúc danh sách lớn tới mức bản
+thân việc tải JSON thành vấn đề (cỡ chục nghìn người). Khi đó phải đổi cả hai
+bảng gói và ô tìm kiếm sang truy vấn server, không chỉ riêng bảng này.
 
 Về việc sửa key: cột trong database tên là `activation_key_hash` nhưng thực tế
 lưu **key dạng thô** (app desktop đọc thẳng), nên trang quản trị hiện nguyên

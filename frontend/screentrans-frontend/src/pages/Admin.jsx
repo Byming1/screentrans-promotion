@@ -11,6 +11,8 @@ import {
   KeyRound,
   Check,
   Copy,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { adminApi } from "../services/admin";
 import { errorMessage } from "../services/api";
@@ -496,6 +498,9 @@ function UserDetail({ userId, onClose, onKeyChanged, onGranted }) {
   );
 }
 
+// 25 dòng/trang: vừa một màn hình laptop mà không phải cuộn nhiều.
+const PAGE_SIZE = 25;
+
 const FILTERS = [
   { key: "all", label: "Tất cả" },
   { key: "monthly", label: "Gói tháng" },
@@ -515,7 +520,19 @@ export default function Admin() {
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const [openUserId, setOpenUserId] = useState(null);
+
+  // Đổi từ khoá hay bộ lọc thì kết quả khác hẳn, giữ nguyên trang cũ sẽ ra
+  // một trang trống hoặc lệch ngữ cảnh.
+  const changeQuery = (value) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const changeFilter = (value) => {
+    setFilter(value);
+    setPage(1);
+  };
 
   // Tải lần đầu: chỉ set state trong callback của promise, không set đồng bộ
   // trong thân effect (busy đã mặc định là true).
@@ -569,6 +586,20 @@ export default function Admin() {
       );
     });
   }, [users, query, filter]);
+
+  // Phân trang ở client: dữ liệu đã có sẵn trong bộ nhớ (hai bảng gói và ô tìm
+  // kiếm đều cần toàn bộ danh sách), nên chỉ cần cắt bớt số dòng đem render —
+  // thứ thực sự làm chậm trang. Đổi trang không phải gọi lại API.
+  const pageCount = Math.max(1, Math.ceil(visibleUsers.length / PAGE_SIZE));
+  // Kẹp lại phòng khi lọc/tìm làm số trang co lại dưới trang đang xem.
+  const safePage = Math.min(page, pageCount);
+  const pageUsers = useMemo(
+    () => visibleUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [visibleUsers, safePage],
+  );
+
+  const firstShown = visibleUsers.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(safePage * PAGE_SIZE, visibleUsers.length);
 
   const subs = stats?.subscriptions;
   const revenue = stats?.revenue;
@@ -670,7 +701,7 @@ export default function Admin() {
                   <input
                     type="search"
                     value={query}
-                    onChange={(event) => setQuery(event.target.value)}
+                    onChange={(event) => changeQuery(event.target.value)}
                     placeholder="Tìm theo email hoặc tên"
                     aria-label="Tìm người dùng"
                   />
@@ -682,7 +713,7 @@ export default function Admin() {
                       type="button"
                       className={filter === item.key ? "chip active" : "chip"}
                       aria-pressed={filter === item.key}
-                      onClick={() => setFilter(item.key)}
+                      onClick={() => changeFilter(item.key)}
                     >
                       {item.label}
                     </button>
@@ -707,7 +738,7 @@ export default function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleUsers.map((row) => (
+                    {pageUsers.map((row) => (
                       // Cả dòng là nút mở chi tiết. Dùng tabIndex + onKeyDown
                       // thay vì bọc <button> trong <td> để bàn phím cũng mở
                       // được mà không phá cấu trúc bảng.
@@ -756,6 +787,38 @@ export default function Admin() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {visibleUsers.length > 0 && (
+              <div className="pager">
+                <span className="pager-info">
+                  {number.format(firstShown)}–{number.format(lastShown)} trên{" "}
+                  {number.format(visibleUsers.length)} người
+                </span>
+                {pageCount > 1 && (
+                  <div className="pager-controls">
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-xs"
+                      onClick={() => setPage((n) => Math.max(1, n - 1))}
+                      disabled={safePage <= 1}
+                    >
+                      <ChevronLeft size={14} /> Trước
+                    </button>
+                    <span className="pager-page">
+                      Trang {number.format(safePage)} / {number.format(pageCount)}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-xs"
+                      onClick={() => setPage((n) => Math.min(pageCount, n + 1))}
+                      disabled={safePage >= pageCount}
+                    >
+                      Sau <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </section>

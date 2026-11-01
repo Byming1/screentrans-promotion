@@ -1591,6 +1591,31 @@ button:disabled {
 .sub-row.current td:first-child {
   box-shadow: inset 3px 0 0 #43b9f4;
 }
+/* Thanh phân trang dưới bảng danh sách người dùng. */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  border-top: 1px solid #eef5f9;
+}
+.pager-info {
+  font-size: 12px;
+  color: #8ba1b1;
+}
+.pager-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pager-page {
+  font-size: 12px;
+  font-weight: 700;
+  color: #51708a;
+  white-space: nowrap;
+}
 /* Khu cấp gói tay, đặt dưới bảng gói trong hộp thoại. */
 .grant-box {
   display: flex;
