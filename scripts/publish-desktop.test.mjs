@@ -144,3 +144,21 @@ test("a verified draft is not published or advertised before live account checks
   assert.equal(f.calls.some((call) => call.method === "PATCH"), false);
   assert.equal(JSON.parse(await readFile(f.manifestFile)).published, false);
 });
+
+test("release notes preserve the reviewed native test scope", async (t) => {
+  const f = await fixture(t);
+  const nativeWindowsTestSummary = "Native Windows controlled color and monochrome fixtures passed; live games not benchmarked.";
+  await writeFile(f.manifestFile, JSON.stringify({ ...f.manifest, nativeWindowsTested: true, nativeWindowsTestSummary }));
+  await publishDesktop(f.installer, "fake-test-token", { ...f, draftOnly: true });
+  const body = f.calls.find(call => call.url.endsWith("/releases") && call.method === "POST").body.body;
+  assert.ok(body.includes(nativeWindowsTestSummary));
+  assert.ok(body.includes("Unsigned."));
+  assert.ok(!body.includes("capture/overlay not verified"));
+});
+
+test("release notes keep the unverified warning when native results are absent", async (t) => {
+  const f = await fixture(t);
+  await publishDesktop(f.installer, "fake-test-token", { ...f, draftOnly: true });
+  const body = f.calls.find(call => call.url.endsWith("/releases") && call.method === "POST").body.body;
+  assert.ok(body.includes("Native Windows capture/overlay not verified."));
+});

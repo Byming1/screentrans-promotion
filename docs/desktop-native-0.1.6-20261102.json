@@ -1,0 +1,66 @@
+{
+  "version": "0.1.6",
+  "channel": "unsigned_limited_beta",
+  "user_explicitly_approved_release_with_final_capture_limitations": true,
+  "installer_sha256": "78da9a89af00f9fe10f75a9199a6ffe6632ff9b4ed9c6c065588dcc8c5787128",
+  "installer_bytes": 86603236,
+  "installed_executable_sha256": "d1bd0d5a881b0801f39a33d006c0aa0c891134df5b53c35c7e5effba3a4e4c4a",
+  "source_archive_sha256": "6a8e8ecf23b157df84e78cdd44385b7c0819bdc0104745751bb250e6c6803486",
+  "bootstrap_sha256": "79b1a8b9b8798031c7eba40f0ea86f6a6a67e5f00ccf592d78ba7a0e529a2bbf",
+  "environment": {
+    "os": "Windows 11 Home build 26200",
+    "gpu": "NVIDIA RTX 3050 Laptop",
+    "qt": "6.11.2",
+    "native_windows_build": true,
+    "wine_build": false
+  },
+  "passed": {
+    "native_installer": true,
+    "installed_executable_matches_build_manifest": true,
+    "original_preference_device_credential_hashes_unchanged": true,
+    "bundled_dependencies_and_dpapi": true,
+    "first_launch_account_entry": true,
+    "registration_tab": true,
+    "browser_password_login_and_device_approval": true,
+    "styled_background_matches_design_in_frozen_executable": true,
+    "encrypted_account_persistence_and_plan_display": true,
+    "saved_session_skips_account_entry": true,
+    "logout_returns_to_account_entry": true,
+    "python_focused_tests": 154,
+    "high_dpi_ui_tests": 32,
+    "publisher_tests": 14
+  },
+  "final_capture_qualification": {
+    "passed": false,
+    "attempts_retained": 2,
+    "checks_passed_in_failed_attempt": 1,
+    "checks_expected": 11,
+    "failure": "Overlay not visible while the fixture was no longer the foreground window",
+    "foreground_policy_relaxed": false,
+    "failed_attempts_preserved_and_not_relabelled_as_passed": true,
+    "user_gesture_retry_was_prepared_but_not_observed_running": true,
+    "live_game_compatibility_not_claimed": true
+  },
+  "historical_capture_evidence_only": {
+    "revision": "r4, not this final r6 installer",
+    "controlled_monochrome_wgc_checks_passed": 11,
+    "controlled_color_wgc_fp16_checks_passed": 11,
+    "does_not_substitute_for_final_r6_capture_qualification": true
+  },
+  "other_limitations": [
+    "The first native login attempt failed to reach the account website; a later retry passed after HTTPS probes. WAN reliability needs additional measurement.",
+    "Google OAuth and signup email delivery have not been verified.",
+    "Exclusive fullscreen, all GPUs/HDR modes and GPU switching recovery are not comprehensively tested.",
+    "Translation accuracy and production-scale concurrency are not benchmarked."
+  ],
+  "release": {
+    "github_release_id": 431137429,
+    "github_asset_id": 700781802,
+    "url": "https://github.com/Byming1/screentrans-promotion/releases/tag/desktop-v0.1.6",
+    "default_server": "https://screentrans1907.duckdns.org",
+    "login_mode": "account",
+    "tailscale_required": false,
+    "model_restarted": false,
+    "server_left_active": true
+  }
+}

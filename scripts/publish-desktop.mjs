@@ -32,6 +32,11 @@ export async function publishDesktop(installer, token, { manifestFile = manifest
   }
   const tag = `desktop-v${manifest.version}`;
   const title = `ScreenTrans Desktop ${manifest.version} Beta`;
+  const nativeSummary = typeof manifest.nativeWindowsTestSummary === "string" && manifest.nativeWindowsTestSummary.trim()
+    ? manifest.nativeWindowsTestSummary.trim()
+    : manifest.nativeWindowsTested
+      ? "Native Windows capture/overlay verified on controlled fixtures."
+      : "Native Windows capture/overlay not verified.";
   function verifyAsset(asset, draft) {
     if (asset.name !== name || asset.size !== manifest.bytes || asset.digest !== `sha256:${manifest.sha256}`) {
       throw new Error("GitHub asset name/size/digest mismatch or unavailable; manifest unchanged.");
@@ -49,7 +54,7 @@ export async function publishDesktop(installer, token, { manifestFile = manifest
       tag_name: tag, name: title,
       draft: true, prerelease: true,
       body: `Windows x64 beta. SHA-256: ${manifest.sha256}\n\n` +
-        `Sign-in: ${manifest.loginMode}. Unsigned. Native Windows capture/overlay not verified.`,
+        `Sign-in: ${manifest.loginMode}. Unsigned.\n\n${nativeSummary}`,
     }),
   });
   if (release.draft !== true || release.name !== title ||
